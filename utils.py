@@ -6,6 +6,8 @@ Created on Tue Oct 13 16:14:07 2026
 @author: walidajalil
 """
 
+import json
+
 # Code to print nested trees:
 
 
@@ -21,3 +23,12 @@ def print_tree(data, prefix=""):
 
             new_prefix = prefix + ("    " if is_last else "│   ")
             print_tree(value, new_prefix)
+
+
+# Check whether the variable is a JSON.
+def is_json(myjson):
+    try:
+        json.loads(myjson)
+    except ValueError:
+        return False
+    return True

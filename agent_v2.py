@@ -10,6 +10,7 @@ import os
 import requests
 import time
 import json
+import utils
 
 
 # What is happening right now?
@@ -31,18 +32,9 @@ def get_deployment():
     }
 
 
-# Check whether the variable is a JSON.
-def is_json(myjson):
-    try:
-        json.loads(myjson)
-    except ValueError:
-        return False
-    return True
-
-
 # Check whether the LLM answer is the right format.
 def parse_answer(answer, available_tools):
-    if is_json(answer):
+    if utils.is_json(answer):
         parsed_answer = json.loads(answer)
         if isinstance(parsed_answer, dict):
             key = "action"
