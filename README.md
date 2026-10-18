@@ -2,7 +2,7 @@
 
 A small project for learning how LLM agents work under the hood.
 
-The current version simulates a software incident where a service became slow after a deployment. The LLM can choose between a few simple tools, inspect the returned data, and use the collected observations to produce a diagnosis.
+The project simulates a software incident where a service became slow after a deployment. The LLM can inspect system information using tools and use the results to diagnose the problem.
 
 ## How it works
 
@@ -11,26 +11,18 @@ The basic loop is:
 ```text
 incident
    ↓
-LLM chooses a tool
+LLM decides which tools to call
    ↓
-Python validates the choice
+Python executes the tools
    ↓
-tool is executed
+tool results are added to the conversation
    ↓
-result is stored as an observation
-   ↓
-LLM chooses the next tool
-   ↓
-final diagnosis
+LLM continues or gives a final diagnosis
 ```
 
-The model currently returns its tool choice as JSON, for example:
+The agent uses native tool calling and can request multiple tools in the same response. The loop continues until the model returns a normal answer instead of another tool call.
 
-```json
-{"action": "metrics"}
-```
-
-Python then parses and validates the response before executing the corresponding function.
+A maximum iteration limit prevents the agent from looping indefinitely.
 
 ## Current tools
 
@@ -46,14 +38,12 @@ Returns information about the latest deployment and configuration changes.
 
 ```mermaid
 flowchart TD
-    A[Incident] --> B[Build prompt]
-    B --> C[LLM chooses action]
-    C --> D[Validate response]
-    D --> E[Run tool]
-    E --> F[Store observation]
-    F --> G{Tools remaining?}
-    G -->|Yes| B
-    G -->|No| H[Final diagnosis]
+    A[Incident] --> B[LLM]
+    B --> C{Tool calls?}
+    C -->|Yes| D[Run tools]
+    D --> E[Add results to messages]
+    E --> B
+    C -->|No| F[Final diagnosis]
 ```
 
 ## Stack
@@ -63,16 +53,11 @@ flowchart TD
 - vLLM
 - RunPod Serverless
 - requests
-- JSON
 
 ## Next steps
 
-The current JSON-based tool selection is deliberately simple. The next step is to replace it with native tool calling.
-
-After that I plan to add:
-
 - more realistic tools, such as logs
 - MCP
-- RAG over runbooks / incident documentation
-- evaluation of tool selection and diagnosis quality
+- RAG over runbooks and incident documentation
+- evaluation of tool use and diagnosis quality
 - latency and token usage measurements
