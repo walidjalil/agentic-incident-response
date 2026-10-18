@@ -32,12 +32,23 @@ def get_deployment():
     }
 
 
+# Get information from the logs.
+def get_logs(service, limit):
+    logs = f"This is a placeholder log. Data is brought from {service} X using a maximum of {limit} rows."
+
+    return logs
+
+
 # Return correct tool:
-def return_tool(action):
+def return_tool(action, tool_args_dict):
     if action == "get_metrics":
         tool_result = get_metrics()
     elif action == "get_deployment":
         tool_result = get_deployment()
+    elif action == "get_logs":
+        tool_result = get_logs(
+            tool_args_dict["service"], tool_args_dict["limit"]
+        )
     return tool_result
 
 
@@ -78,6 +89,27 @@ tools = [
             "parameters": {
                 "type": "object",
                 "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_logs",
+            "description": "Get log posts from various services.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "service": {
+                        "type": "string",
+                        "description": "The service you wish to extract logs from.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The maximum number of logs rows / posts you wish to extract.",
+                    },
+                },
+                "required": ["service", "limit"],
             },
         },
     },
@@ -137,7 +169,7 @@ messages = [
     },
     {
         "role": "user",
-        "content": "The service is slow. Investigate the current system state.",
+        "content": "The API service is slow and returning errors. Investigate the problem.",
     },
 ]
 
@@ -169,9 +201,13 @@ while True:
     if answer.get("tool_calls"):
         for a in answer["tool_calls"]:
             tool_name = a["function"]["name"]
+
+            tool_args_dict = json.loads(a["function"]["arguments"])
+            print(tool_args_dict)
+
             print("\nQwen chose: ", tool_name)
 
-            tool_result = return_tool(tool_name)
+            tool_result = return_tool(tool_name, tool_args_dict)
             print("\nTool result:\n")
             print(tool_result)
 
@@ -188,3 +224,7 @@ while True:
         print("\n")
         print(answer["content"])
         break
+
+
+# Bla bla bla
+# Bla bla bla
