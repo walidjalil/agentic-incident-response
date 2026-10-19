@@ -13,3 +13,4 @@
 2026-10-19 09:04:15 [WARN] [queue-manager] Queue length increasing. Current queue: 32
 2026-10-19 09:05:01 [ERROR] [api-gateway] Request failed. HTTP 503 Service Unavailable.
 2026-10-19 09:05:12 [WARN] [api-gateway] CRITICAL: Latency at 850ms.
+2026-10-19 09:05:30 [ERROR] [queue-manager] Queue overloaded. Current queue: 47. Dropping incoming requests.
