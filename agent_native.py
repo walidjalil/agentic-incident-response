@@ -11,6 +11,9 @@ import requests
 import time
 import json
 import utils
+import pathlib
+
+# Extract information from relevant logs.
 
 
 # What is happening right now?
@@ -34,9 +37,22 @@ def get_deployment():
 
 # Get information from the logs.
 def get_logs(service, limit):
-    logs = f"This is a placeholder log. Data is brought from  the follwing service: {service} using a maximum of {limit} rows."
+    file_path_pos = pathlib.Path(__file__).parent.resolve()
+    file_name = "api_clean.log"
 
-    return logs
+    full_file_name = file_path_pos / file_name
+
+    with open(full_file_name, "r", encoding="utf-8") as file:
+        log = file.readlines()
+
+        # # Now 'lines' is a list where each element is a line of text
+        # print(log)
+
+    log = log[-limit:]
+    # Since log is a list of strings, we need to join them. Since Qwen expects a single large string (not a list)
+    log = "".join(log)
+
+    return log
 
 
 # Return correct tool:
