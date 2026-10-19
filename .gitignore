@@ -17,3 +17,6 @@ venv/
 
 # API key
 runpod_api_key.rtf
+
+#playground file
+playground.py
