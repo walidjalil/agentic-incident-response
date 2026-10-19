@@ -38,7 +38,7 @@ def get_deployment():
 # Get information from the logs.
 def get_logs(service, limit):
     file_path_pos = pathlib.Path(__file__).parent.resolve()
-    file_name = "api_clean.log"
+    file_name = "api_ambigious.log"
 
     full_file_name = file_path_pos / file_name
 
@@ -238,7 +238,7 @@ while True:
     # If no tool call is returned, treat the response as final.
     else:
         print("\n")
-        print(answer["content"])
+        print(utils.remove_thinking(answer["content"]))
         break
 
 

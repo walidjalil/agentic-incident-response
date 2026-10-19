@@ -7,6 +7,7 @@ Created on Tue Oct 13 16:14:07 2026
 """
 
 import json
+import re
 
 # Code to print nested trees:
 
@@ -32,3 +33,8 @@ def is_json(myjson):
     except ValueError:
         return False
     return True
+
+
+# Remove thinking part from output tokens in answer:
+def remove_thinking(answer):
+    return re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL).strip
