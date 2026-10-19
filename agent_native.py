@@ -141,7 +141,7 @@ def ask_llm(messages, tools):
                 "model": "qwen/qwen3-8b",
                 "messages": messages,
                 "tools": tools,
-                "max_tokens": 200,
+                "max_tokens": 1000,
                 "temperature": 0.2,
                 "chat_template_kwargs": {"enable_thinking": False},
             },
