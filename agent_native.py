@@ -151,13 +151,13 @@ def ask_llm(messages, tools):
 
         status_data = status_response.json()
 
-        print("Current status:", status_data["status"])
+        print("\nCurrent status:", status_data["status"])
 
         # Code block to Print the message if status is completed.
-        # if status_data["status"] == "COMPLETED":
-        # message = status_data["output"][0]["choices"][0]["message"]
-        # print(message)
-        # return message
+        if status_data["status"] == "COMPLETED":
+            message = status_data["output"][0]["choices"][0]["message"]
+            # print(message)
+            return message
 
         time.sleep(7)
 
