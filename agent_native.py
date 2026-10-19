@@ -34,7 +34,7 @@ def get_deployment():
 
 # Get information from the logs.
 def get_logs(service, limit):
-    logs = f"This is a placeholder log. Data is brought from {service} X using a maximum of {limit} rows."
+    logs = f"This is a placeholder log. Data is brought from  the follwing service: {service} using a maximum of {limit} rows."
 
     return logs
 
@@ -55,8 +55,8 @@ def return_tool(action, tool_args_dict):
 api_key = os.getenv("RUNPOD_API_KEY")
 endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID")
 
-print("\nAPI key found:", api_key is not None)
-print("Endpoint ID found:", endpoint_id is not None)
+# print("\nAPI key found:", api_key is not None)
+# print("Endpoint ID found:", endpoint_id is not None)
 
 
 url = f"https://api.runpod.ai/v2/{endpoint_id}/runsync"
@@ -139,7 +139,6 @@ def ask_llm(messages, tools):
     )
 
     result = response.json()
-    print(result)
 
     job_id = result["id"]
     status_url = f"https://api.runpod.ai/v2/{endpoint_id}/status/{job_id}"
@@ -154,12 +153,13 @@ def ask_llm(messages, tools):
 
         print("Current status:", status_data["status"])
 
-        if status_data["status"] == "COMPLETED":
-            message = status_data["output"][0]["choices"][0]["message"]
-            print(message)
-            return message
+        # Code block to Print the message if status is completed.
+        # if status_data["status"] == "COMPLETED":
+        # message = status_data["output"][0]["choices"][0]["message"]
+        # print(message)
+        # return message
 
-        time.sleep(5)
+        time.sleep(7)
 
 
 messages = [
@@ -203,7 +203,7 @@ while True:
             tool_name = a["function"]["name"]
 
             tool_args_dict = json.loads(a["function"]["arguments"])
-            print(tool_args_dict)
+            # print(tool_args_dict)
 
             print("\nQwen chose: ", tool_name)
 
