@@ -35,10 +35,15 @@ def get_deployment():
     }
 
 
-# Get information from the logs.
+# Get information from various logs.
 def get_logs(service, limit):
+    service_files = {
+        "api": "api_clean.log",
+        "worker": "worker.log",
+        "db": "db.log",
+    }
     file_path_pos = pathlib.Path(__file__).parent.resolve()
-    file_name = "api_ambigious.log"
+    file_name = service_files[service]
 
     full_file_name = file_path_pos / file_name
 

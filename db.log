@@ -1,0 +1,7 @@
+2026-10-19 08:30:00 [INFO] [db-main] Database running normally. Connections: 12/100
+2026-10-19 09:00:16 [INFO] [db-main] Connection count: 15/100
+2026-10-19 09:01:05 [WARN] [db-pool] Rapid increase in connection requests detected.
+2026-10-19 09:02:10 [WARN] [db-pool] Connection count: 85/100
+2026-10-19 09:03:05 [ERROR] [db-pool] Connection limit reached (100/100). Rejecting new connections.
+2026-10-19 09:04:10 [ERROR] [db-main] Too many connections. User 'api-gateway' blocked.
+2026-10-19 09:05:00 [ERROR] [db-main] Too many connections. User 'worker-service' blocked.

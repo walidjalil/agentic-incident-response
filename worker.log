@@ -1,0 +1,6 @@
+2026-10-19 08:45:00 [INFO] [worker] Background jobs processing smoothly. Queue: 0
+2026-10-19 09:01:00 [INFO] [worker] Starting scheduled batch job processing.
+2026-10-19 09:03:15 [WARN] [worker] DB connection latency high. Retrying...
+2026-10-19 09:04:30 [ERROR] [worker] Failed to connect to database. Max retries exceeded.
+2026-10-19 09:05:05 [ERROR] [worker] Cannot fetch tasks from queue. API returned 503 Service Unavailable.
+2026-10-19 09:05:20 [FATAL] [worker] Worker shutting down due to upstream dependency failures.

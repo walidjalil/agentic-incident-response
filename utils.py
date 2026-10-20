@@ -37,4 +37,4 @@ def is_json(myjson):
 
 # Remove thinking part from output tokens in answer:
 def remove_thinking(answer):
-    return re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL).strip
+    return re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL).strip()
