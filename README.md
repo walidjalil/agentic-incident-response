@@ -2,7 +2,7 @@
 
 A small project for learning how LLM agents work under the hood.
 
-The project simulates a software incident where a service became slow after a deployment. The LLM can inspect system information using tools and use the results to diagnose the problem.
+The project simulates a software incident where an API service becomes slow and starts returning errors. The agent can inspect metrics, deployment changes and service logs, then use the collected evidence to diagnose the problem.
 
 ## How it works
 
@@ -17,10 +17,10 @@ Python executes the tools
    ↓
 tool results are added to the conversation
    ↓
-LLM continues or gives a final diagnosis
+LLM continues investigating or gives a final diagnosis
 ```
 
-The agent uses native tool calling and can request multiple tools in the same response. The loop continues until the model returns a normal answer instead of another tool call.
+The agent uses native tool calling and can request multiple tools in the same response. Tool arguments are defined with JSON Schema, and log tools can inspect different services such as the API, database and worker.
 
 A maximum iteration limit prevents the agent from looping indefinitely.
 
@@ -33,6 +33,10 @@ Returns simulated service metrics such as latency, GPU utilization and queue len
 `get_deployment()`
 
 Returns information about the latest deployment and configuration changes.
+
+`get_logs(service, limit)`
+
+Reads log data for a selected service and returns the most recent log entries.
 
 ## Architecture
 
@@ -56,7 +60,6 @@ flowchart TD
 
 ## Next steps
 
-- more realistic tools, such as logs
 - MCP
 - RAG over runbooks and incident documentation
 - evaluation of tool use and diagnosis quality

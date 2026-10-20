@@ -8,8 +8,6 @@ Created on Tue Oct 20 02:30:43 2026
 
 import pathlib
 
-# Extract information from relevant logs.
-
 
 # What is happening right now?
 def get_metrics():
@@ -30,7 +28,7 @@ def get_deployment():
     }
 
 
-# Get information from various logs.
+# Extract information from relevant logs.
 def get_logs(service, limit):
     service_files = {
         "api": "api_ambigious.log",
@@ -44,9 +42,6 @@ def get_logs(service, limit):
 
     with open(full_file_name, "r", encoding="utf-8") as file:
         log = file.readlines()
-
-        # # Now 'lines' is a list where each element is a line of text
-        # print(log)
 
     log = log[-limit:]
     # Since log is a list of strings, we need to join them. Since Qwen expects a single large string (not a list)
