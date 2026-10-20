@@ -11,7 +11,7 @@ import requests
 import time
 import json
 import utils
-import tools
+import incident_tools
 
 api_key = os.getenv("RUNPOD_API_KEY")
 endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID")
@@ -174,7 +174,7 @@ while True:
             print("\nQwen chose: ", tool_name)
             print("Arguments:", tool_args_dict)
 
-            tool_result = tools.return_tool(tool_name, tool_args_dict)
+            tool_result = incident_tools.return_tool(tool_name, tool_args_dict)
             print("\nTool result:\n")
             print(tool_result)
 
