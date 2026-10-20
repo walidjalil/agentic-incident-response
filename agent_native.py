@@ -11,67 +11,7 @@ import requests
 import time
 import json
 import utils
-import pathlib
-
-# Extract information from relevant logs.
-
-
-# What is happening right now?
-def get_metrics():
-    return {"latency_ms": 850, "gpu_utilization": 32, "queue_length": 47}
-
-
-# Get information on current deployment and any changes to it.
-def get_deployment():
-    return {
-        "version_before": "v1.8",
-        "version_after": "v1.9",
-        "changes": {
-            "batching_enabled": {
-                "before": True,
-                "after": False,
-            },
-        },
-    }
-
-
-# Get information from various logs.
-def get_logs(service, limit):
-    service_files = {
-        "api": "api_clean.log",
-        "worker": "worker.log",
-        "db": "db.log",
-    }
-    file_path_pos = pathlib.Path(__file__).parent.resolve()
-    file_name = service_files[service]
-
-    full_file_name = file_path_pos / file_name
-
-    with open(full_file_name, "r", encoding="utf-8") as file:
-        log = file.readlines()
-
-        # # Now 'lines' is a list where each element is a line of text
-        # print(log)
-
-    log = log[-limit:]
-    # Since log is a list of strings, we need to join them. Since Qwen expects a single large string (not a list)
-    log = "".join(log)
-
-    return log
-
-
-# Return correct tool:
-def return_tool(action, tool_args_dict):
-    if action == "get_metrics":
-        tool_result = get_metrics()
-    elif action == "get_deployment":
-        tool_result = get_deployment()
-    elif action == "get_logs":
-        tool_result = get_logs(
-            tool_args_dict["service"], tool_args_dict["limit"]
-        )
-    return tool_result
-
+import tools
 
 api_key = os.getenv("RUNPOD_API_KEY")
 endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID")
@@ -88,9 +28,9 @@ headers = {
 }
 
 # Chat Completions tool schema (vLLM/OpenAI-compatible format).
-# Chat Completions API is slightly different than Reponses API. "type": "function" part is slightly different.
+# Chat Completions API is slightly different than Responses API. "type": "function" part is slightly different.
 
-tools = [
+tool_definitions = [
     {
         "type": "function",
         "function": {
@@ -123,6 +63,11 @@ tools = [
                 "properties": {
                     "service": {
                         "type": "string",
+                        "enum": [
+                            "api",
+                            "worker",
+                            "db",
+                        ],  # enum means that service variable must be one of the three values.
                         "description": "The service you wish to extract logs from.",
                     },
                     "limit": {
@@ -137,7 +82,7 @@ tools = [
 ]
 
 
-def ask_llm(messages, tools):
+def ask_llm(messages, tool_definitions):
     data = {
         "input": {
             "route": "/v1/chat/completions",
@@ -145,7 +90,7 @@ def ask_llm(messages, tools):
             "body": {
                 "model": "qwen/qwen3-8b",
                 "messages": messages,
-                "tools": tools,
+                "tools": tool_definitions,
                 "max_tokens": 2000,
                 "temperature": 0.2,
                 "chat_template_kwargs": {"enable_thinking": True},
@@ -180,7 +125,7 @@ def ask_llm(messages, tools):
             # print(message)
             return message
 
-        time.sleep(7)
+        time.sleep(5)
 
 
 messages = [
@@ -190,7 +135,7 @@ messages = [
     },
     {
         "role": "user",
-        "content": "The API service is slow and returning errors. Investigate the problem.",
+        "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
     },
 ]
 
@@ -203,20 +148,20 @@ while True:
         messages.append(
             {
                 "role": "user",
-                "content": "Maximum tool iterations reached. Give your best final answer using the information gathered so far.",
+                "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
             }
         )
 
         final_answer = ask_llm(messages, [])
 
-        print("\nAgent stopped: maximum iterations reached.")
+        print("\nAgent stopped: maximum agent iterations reached.")
         print("Final answer:")
-        print(final_answer["content"])
+        print(utils.remove_thinking(final_answer["content"]))
         break
 
     agentic_iterations += 1
 
-    answer = ask_llm(messages, tools)
+    answer = ask_llm(messages, tool_definitions)
     messages.append(answer)
 
     if answer.get("tool_calls"):
@@ -227,12 +172,13 @@ while True:
             # print(tool_args_dict)
 
             print("\nQwen chose: ", tool_name)
+            print("Arguments:", tool_args_dict)
 
-            tool_result = return_tool(tool_name, tool_args_dict)
+            tool_result = tools.return_tool(tool_name, tool_args_dict)
             print("\nTool result:\n")
             print(tool_result)
 
-            ### Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
+            # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
             new_message = {
                 "role": "tool",
                 "tool_call_id": a["id"],
