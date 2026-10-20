@@ -6,8 +6,8 @@ Created on Tue Oct 20 03:48:06 2026
 @author: walidajalil
 """
 
-import tools
 from mcp.server import MCPServer
+import tools
 
 mcp = MCPServer("Incident Response")
 
@@ -28,3 +28,7 @@ def get_deployment() -> dict:
 def get_logs(service: str, limit: int) -> str:
     """Extract information from relevant logs."""
     return tools.get_logs(service, limit)
+
+
+if __name__ == "__main__":
+    mcp.run()
