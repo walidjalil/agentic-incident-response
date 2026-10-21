@@ -9,6 +9,9 @@ Created on Tue Oct 20 03:48:06 2026
 from mcp.server import MCPServer
 import incident_tools
 
+# Import Literal, this is on order to replace enum in the JSON-dict for input arguments.
+from typing import Literal
+
 mcp = MCPServer("Incident Response")
 
 
@@ -25,7 +28,7 @@ def get_deployment() -> dict:
 
 
 @mcp.tool()
-def get_logs(service: str, limit: int) -> str:
+def get_logs(service: Literal["api", "worker", "db"], limit: int) -> str:
     """Extract information from relevant logs."""
     return incident_tools.get_logs(service, limit)
 

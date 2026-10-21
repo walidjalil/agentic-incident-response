@@ -23,10 +23,10 @@ async def get_tool_definitions():
         # Along with names, arguments, input and output schema.
         # print(result)
         for tool in result.tools:
-            print("\nTool name:")
-            print(tool.name)
-            print("\nTool description:")
-            print(tool.description)
+            # print("\nTool name:")
+            # print(tool.name)
+            # print("\nTool description:")
+            # print(tool.description)
             # print("\nTool input schema:")
             # print(tool.input_schema)
 
