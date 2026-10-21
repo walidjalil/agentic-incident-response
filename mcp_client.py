@@ -21,17 +21,7 @@ async def get_tool_definitions():
 
         result = await client.list_tools()
 
-        # Print tools, it will list all of the tools defined in the mcp_server.py file.
-        # Along with names, arguments, input and output schema.
-        # print(result)
         for tool in result.tools:
-            # print("\nTool name:")
-            # print(tool.name)
-            # print("\nTool description:")
-            # print(tool.description)
-            # print("\nTool input schema:")
-            # print(tool.input_schema)
-
             tool_definition = {
                 "type": "function",
                 "function": {

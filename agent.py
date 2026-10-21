@@ -18,9 +18,6 @@ import utils
 api_key = os.getenv("RUNPOD_API_KEY")
 endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID")
 
-# print("\nAPI key found:", api_key is not None)
-# print("Endpoint ID found:", endpoint_id is not None)
-
 
 url = f"https://api.runpod.ai/v2/{endpoint_id}/runsync"
 
@@ -76,7 +73,6 @@ def ask_llm(messages, tool_definitions):
         # Code block to Print the message if status is completed.
         if status_data["status"] == "COMPLETED":
             message = status_data["output"][0]["choices"][0]["message"]
-            # print(message)
             return message
 
         time.sleep(10)
@@ -123,7 +119,6 @@ while True:
             tool_name = a["function"]["name"]
 
             tool_args_dict = json.loads(a["function"]["arguments"])
-            # print(tool_args_dict)
 
             print("\nQwen chose: ", tool_name)
             print("Arguments:", tool_args_dict)
@@ -145,7 +140,3 @@ while True:
         print("\n")
         print(utils.remove_thinking(answer["content"]))
         break
-
-
-# Bla bla bla
-# Bla bla bla

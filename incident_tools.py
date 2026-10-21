@@ -50,7 +50,9 @@ def get_logs(service, limit):
     return log
 
 
-# Return correct tool:
+# Return correct tool
+# Used by the earlier direct native-tool agent.
+# The MCP agent routes tool calls through mcp_server.py instead.
 def return_tool(action, tool_args_dict):
     if action == "get_metrics":
         tool_result = get_metrics()
