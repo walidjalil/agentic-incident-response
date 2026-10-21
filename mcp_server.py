@@ -10,6 +10,7 @@ from mcp.server import MCPServer
 import incident_tools
 
 # Import Literal, this is on order to replace enum in the JSON-dict for input arguments.
+# Literal ----> samma som enum["a", "b", "c"]
 from typing import Literal
 
 mcp = MCPServer("Incident Response")

@@ -6,14 +6,13 @@ Created on Fri Oct 16 20:43:46 2026
 @author: walidajalil
 """
 
-from mcp_client import get_tool_definitions
+from mcp_client import get_tool_definitions, call_mcp_tool
 import anyio
 import os
 import requests
 import time
 import json
 import utils
-import incident_tools
 
 
 api_key = os.getenv("RUNPOD_API_KEY")
@@ -32,6 +31,7 @@ headers = {
 
 # Chat Completions tool schema (vLLM/OpenAI-compatible format).
 # Chat Completions API is slightly different than Responses API. "type": "function" part is slightly different.
+
 
 tool_definitions = anyio.run(get_tool_definitions)
 
@@ -128,7 +128,7 @@ while True:
             print("\nQwen chose: ", tool_name)
             print("Arguments:", tool_args_dict)
 
-            tool_result = incident_tools.return_tool(tool_name, tool_args_dict)
+            tool_result = anyio.run(call_mcp_tool, tool_name, tool_args_dict)
             print("\nTool result:\n")
             print(tool_result)
 
@@ -136,7 +136,7 @@ while True:
             new_message = {
                 "role": "tool",
                 "tool_call_id": a["id"],
-                "content": json.dumps(tool_result),
+                "content": tool_result,
             }
             messages.append(new_message)
 
