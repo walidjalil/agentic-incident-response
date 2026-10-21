@@ -79,7 +79,7 @@ def ask_llm(messages, tool_definitions):
             # print(message)
             return message
 
-        time.sleep(5)
+        time.sleep(10)
 
 
 messages = [
