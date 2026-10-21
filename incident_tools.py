@@ -38,7 +38,7 @@ def get_logs(service, limit):
     file_path_pos = pathlib.Path(__file__).parent.resolve()
     file_name = service_files[service]
 
-    full_file_name = file_path_pos / file_name
+    full_file_name = file_path_pos / "logs" / file_name
 
     with open(full_file_name, "r", encoding="utf-8") as file:
         log = file.readlines()
