@@ -50,3 +50,14 @@ async def call_mcp_tool(tool_name, arguments):
 if __name__ == "__main__":
     tool_definitions = anyio.run(get_tool_definitions)
     print(tool_definitions)
+
+    result = anyio.run(
+        call_mcp_tool,
+        "search_runbooks",
+        {
+            "query": "What should I investigate when the database reaches its maximum connection limit?",
+            "top_k": 3,
+        },
+    )
+
+    print(result)

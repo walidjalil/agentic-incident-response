@@ -39,7 +39,7 @@ def ask_llm(messages, tool_definitions=None):
                 "model": "qwen/qwen3-8b",
                 "messages": messages,
                 "tools": tool_definitions,
-                "max_tokens": 2000,
+                "max_tokens": 3000,
                 "temperature": 0.2,
                 "chat_template_kwargs": {"enable_thinking": True},
             },
@@ -78,6 +78,17 @@ def ask_llm(messages, tool_definitions=None):
 if __name__ == "__main__":
     tool_definitions = anyio.run(get_tool_definitions)
 
+    # messages = [
+    #     {
+    #         "role": "system",
+    #         "content": "Use the available tools when needed.",
+    #     },
+    #     {
+    #         "role": "user",
+    #         "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
+    #     },
+    # ]
+
     messages = [
         {
             "role": "system",
@@ -85,7 +96,9 @@ if __name__ == "__main__":
         },
         {
             "role": "user",
-            "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
+            "content": """The API has become significantly slower and is returning intermittent 5xx errors.
+Investigate the incident, determine the most likely root cause, and explain what evidence supports your conclusion.
+Use any available tools or documentation that would help.""",
         },
     ]
 
@@ -120,14 +133,14 @@ if __name__ == "__main__":
 
                 tool_args_dict = json.loads(a["function"]["arguments"])
 
-                print("\nQwen chose: ", tool_name)
-                print("Arguments:", tool_args_dict)
+                # print("\nQwen chose: ", tool_name)
+                # print("Arguments:", tool_args_dict)
 
                 tool_result = anyio.run(
                     call_mcp_tool, tool_name, tool_args_dict
                 )
-                print("\nTool result:\n")
-                print(tool_result)
+                # print("\nTool result:\n")
+                # print(tool_result)
 
                 # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
                 new_message = {

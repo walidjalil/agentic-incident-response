@@ -12,6 +12,8 @@ import numpy as np
 import agent
 import utils
 
+RAG_DOCS_DIR = Path(__file__).parent / "rag_docs"
+
 
 def get_overlapped_chunks(textin, chunksize, overlapsize):
     source = textin["source"]
@@ -62,7 +64,7 @@ def retrieve(query, top_k=3):
                 "chunk_id": i,
                 "source": all_chunks[i]["source"],
                 "text": all_chunks[i]["text"],
-                "score": cosine,
+                "score": float(cosine),
             }
         )
 
@@ -78,45 +80,47 @@ def print_top_ranked_chunks(top_k, results):
         print("Text:", results[i]["text"])
 
 
-# ---------------- Retrieval Stage -------------------------------------------
-RAG_DOCS_DIR = Path(__file__).parent / "rag_docs"
+def main():
+    # ---------------- Retrieval Stage -------------------------------------------
 
-query = "What should I investigate when the database reaches its maximum connection limit?"
-top_k = 3
+    query = "What should I investigate when the database reaches its maximum connection limit?"
+    top_k = 3
 
-results = retrieve(query, top_k)
+    results = retrieve(query, top_k)
 
-# ---------------------- Augmentation Stage --------------------------------
+    # ---------------------- Augmentation Stage --------------------------------
 
-context_list = []
+    context_list = []
 
-for i in range(len(results)):
-    source_string = f"[Source: {results[i]['source']}]"
-    text = source_string + "\n" + results[i]["text"]
-    context_list.append(text)
+    for i in range(len(results)):
+        source_string = f"[Source: {results[i]['source']}]"
+        text = source_string + "\n" + results[i]["text"]
+        context_list.append(text)
 
-llm_retrieval_context = "\n\n".join(context_list)
+    llm_retrieval_context = "\n\n".join(context_list)
+
+    rag_prompt = f"""
+    Use the retrieved context below to answer the question.
+    
+    Retrieved Context:
+    {llm_retrieval_context}
+    
+    Question:
+    {query}
+    """
+
+    # ------------------------- Generation Stage --------------------------------
+
+    messages = [
+        {
+            "role": "user",
+            "content": rag_prompt,
+        }
+    ]
+
+    answer = agent.ask_llm(messages)
+    print(utils.remove_thinking(answer["content"]))
 
 
-rag_prompt = f"""
-Use the retrieved context below to answer the question.
-
-Retrieved Context:
-{llm_retrieval_context}
-
-Question:
-{query}
-"""
-
-# ------------------------- Generation Stage --------------------------------
-
-
-messages = [
-    {
-        "role": "user",
-        "content": rag_prompt,
-    }
-]
-
-answer = agent.ask_llm(messages)
-print(utils.remove_thinking(answer["content"]))
+if __name__ == "__main__":
+    main()
