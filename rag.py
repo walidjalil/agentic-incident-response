@@ -9,8 +9,10 @@ Created on Thu Oct 22 01:10:56 2026
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
 import numpy as np
+import agent
 
 
+# ---------------- Retrieval Stage -------------------------------------------
 def get_overlapped_chunks(textin, chunksize, overlapsize):
     source = textin["source"]
     text = textin["text"]
@@ -69,8 +71,48 @@ for i in range(len(chunk_texts)):
 results.sort(key=lambda x: x["score"], reverse=True)
 
 top_k = 3
+
+
+def print_top_ranked_chunks(top_k, results):
+    for i in range(top_k):
+        print(f"\nRank {i + 1}")
+        print("Source:", results[i]["source"])
+        print("Score:", results[i]["score"])
+        print("Text:", results[i]["text"])
+
+
+# ---------------------- Augmentation Stage --------------------------------
+
+context_list = []
+top_k_chunks = results[:top_k]
+
 for i in range(top_k):
-    print(f"\nRank {i + 1}")
-    print("Source:", results[i]["source"])
-    print("Score:", results[i]["score"])
-    print("Text:", results[i]["text"])
+    source_string = f"[Source: {results[i]['source']}]"
+    text = source_string + "\n" + results[i]["text"]
+    context_list.append(text)
+
+llm_retrieval_context = "\n\n".join(context_list)
+
+
+rag_prompt = f"""
+Use the retrieved context below to answer the question.
+
+Retrieved Context:
+{llm_retrieval_context}
+
+Question:
+{query}
+"""
+
+# ------------------------- Generation Stage --------------------------------
+
+
+messages = [
+    {
+        "role": "user",
+        "content": rag_prompt,
+    }
+]
+
+answer = agent.ask_llm(messages)
+print(answer["content"])

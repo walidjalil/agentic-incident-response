@@ -30,10 +30,7 @@ headers = {
 # Chat Completions API is slightly different than Responses API. "type": "function" part is slightly different.
 
 
-tool_definitions = anyio.run(get_tool_definitions)
-
-
-def ask_llm(messages, tool_definitions):
+def ask_llm(messages, tool_definitions=None):
     data = {
         "input": {
             "route": "/v1/chat/completions",
@@ -78,65 +75,70 @@ def ask_llm(messages, tool_definitions):
         time.sleep(10)
 
 
-messages = [
-    {
-        "role": "system",
-        "content": "Use the available tools when needed.",
-    },
-    {
-        "role": "user",
-        "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
-    },
-]
+if __name__ == "__main__":
+    tool_definitions = anyio.run(get_tool_definitions)
 
-max_agentic_iterations = 5
-agentic_iterations = 0
+    messages = [
+        {
+            "role": "system",
+            "content": "Use the available tools when needed.",
+        },
+        {
+            "role": "user",
+            "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
+        },
+    ]
 
-while True:
-    # Stop safely if the agent reaches the iteration limit.
-    if agentic_iterations >= max_agentic_iterations:
-        messages.append(
-            {
-                "role": "user",
-                "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
-            }
-        )
+    max_agentic_iterations = 5
+    agentic_iterations = 0
 
-        final_answer = ask_llm(messages, [])
+    while True:
+        # Stop safely if the agent reaches the iteration limit.
+        if agentic_iterations >= max_agentic_iterations:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
+                }
+            )
 
-        print("\nAgent stopped: maximum agent iterations reached.")
-        print("Final answer:")
-        print(utils.remove_thinking(final_answer["content"]))
-        break
+            final_answer = ask_llm(messages, [])
 
-    agentic_iterations += 1
+            print("\nAgent stopped: maximum agent iterations reached.")
+            print("Final answer:")
+            print(utils.remove_thinking(final_answer["content"]))
+            break
 
-    answer = ask_llm(messages, tool_definitions)
-    messages.append(answer)
+        agentic_iterations += 1
 
-    if answer.get("tool_calls"):
-        for a in answer["tool_calls"]:
-            tool_name = a["function"]["name"]
+        answer = ask_llm(messages, tool_definitions)
+        messages.append(answer)
 
-            tool_args_dict = json.loads(a["function"]["arguments"])
+        if answer.get("tool_calls"):
+            for a in answer["tool_calls"]:
+                tool_name = a["function"]["name"]
 
-            print("\nQwen chose: ", tool_name)
-            print("Arguments:", tool_args_dict)
+                tool_args_dict = json.loads(a["function"]["arguments"])
 
-            tool_result = anyio.run(call_mcp_tool, tool_name, tool_args_dict)
-            print("\nTool result:\n")
-            print(tool_result)
+                print("\nQwen chose: ", tool_name)
+                print("Arguments:", tool_args_dict)
 
-            # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
-            new_message = {
-                "role": "tool",
-                "tool_call_id": a["id"],
-                "content": tool_result,
-            }
-            messages.append(new_message)
+                tool_result = anyio.run(
+                    call_mcp_tool, tool_name, tool_args_dict
+                )
+                print("\nTool result:\n")
+                print(tool_result)
 
-    # If no tool call is returned, treat the response as final.
-    else:
-        print("\n")
-        print(utils.remove_thinking(answer["content"]))
-        break
+                # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
+                new_message = {
+                    "role": "tool",
+                    "tool_call_id": a["id"],
+                    "content": tool_result,
+                }
+                messages.append(new_message)
+
+        # If no tool call is returned, treat the response as final.
+        else:
+            print("\n")
+            print(utils.remove_thinking(answer["content"]))
+            break
