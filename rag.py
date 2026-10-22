@@ -50,9 +50,27 @@ chunk_texts = [chunk["text"] for chunk in all_chunks]
 document_embeddings = model.encode_document(chunk_texts)
 query_embedding = model.encode_query(query)
 
+results = []
 for i in range(len(chunk_texts)):
     cosine = np.dot(query_embedding, document_embeddings[i, :]) / (
         np.linalg.norm(query_embedding)
         * np.linalg.norm(document_embeddings[i, :])
     )
-    print(f"Cosine Similarity for chunk {i + 1}:", cosine)
+
+    results.append(
+        {
+            "chunk_id": i,
+            "source": all_chunks[i]["source"],
+            "text": all_chunks[i]["text"],
+            "score": cosine,
+        }
+    )
+
+results.sort(key=lambda x: x["score"], reverse=True)
+
+top_k = 3
+for i in range(top_k):
+    print(f"\nRank {i + 1}")
+    print("Source:", results[i]["source"])
+    print("Score:", results[i]["score"])
+    print("Text:", results[i]["text"])
