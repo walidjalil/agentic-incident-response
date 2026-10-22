@@ -1,57 +1,75 @@
 # Agentic Incident Response
 
-A small portfolio project for learning how LLM agents work under the hood and demonstrating modern AI engineering patterns.
+A small project for learning how LLM agents, tool calling, MCP and RAG work under the hood.
 
-The project simulates a production incident where an API service becomes slow and starts returning errors. A Qwen3-based agent investigates the issue using metrics, deployment information and service logs, then produces a diagnosis from the collected evidence.
-
-The project is intentionally built without an agent framework so the orchestration, tool calling and MCP integration remain explicit and understandable.
+The project simulates a software incident where an API service becomes slow and starts returning errors. The agent can inspect metrics, deployment changes and service logs, retrieve relevant troubleshooting guidance, and use the collected evidence to diagnose the problem.
 
 ## How it works
 
+The agent investigation loop is:
+
 ```text
-Incident
+incident
    ↓
-Qwen3 agent
+LLM decides which tools to call
    ↓
-MCP tool discovery
+MCP executes the selected tools
    ↓
-Native tool call
+tool results are added to the conversation
    ↓
-MCP client → MCP server
-   ↓
-Metrics / deployment data / service logs
-   ↓
-Tool result added to conversation
-   ↓
-Agent continues investigating or gives a final diagnosis
+LLM continues investigating or gives a final diagnosis
 ```
 
-The agent can make multiple tool calls across several reasoning steps. A maximum iteration limit prevents infinite loops.
+The agent uses native tool calling and can request multiple tools in the same response. Tool definitions are discovered through MCP and exposed to the model using JSON Schema.
+
+A maximum iteration limit prevents the agent from looping indefinitely.
 
 ## Current tools
 
-- `get_metrics()` — returns simulated latency, GPU utilization and queue length
-- `get_deployment()` — returns deployment and configuration changes
-- `get_logs(service, limit)` — reads recent log entries for `api`, `db` or `worker`
+`get_metrics()`
 
-The available tools and their input schemas are discovered dynamically from the MCP server with `list_tools()`. Tool execution is performed through MCP with `call_tool()`.
+Returns simulated service metrics such as latency, GPU utilization and queue length.
 
-This keeps the agent decoupled from the underlying Python tool implementations.
+`get_deployment()`
 
-## Project progression
+Returns information about the latest deployment and configuration changes.
+
+`get_logs(service, limit)`
+
+Reads log data for a selected service and returns the most recent log entries.
+
+## RAG
+
+A classic RAG pipeline is implemented over local incident-response runbooks.
+
+Documents are split into overlapping chunks, embedded with SentenceTransformers, ranked against the query using cosine similarity, and the top-k chunks are added to the LLM context before generation.
 
 ```text
-manual JSON tool selection
-→ native function calling
-→ multi-step agent loop
-→ real log files
-→ MCP discovery
-→ MCP execution
-→ RAG
-→ evals
+query
+   ↓
+embedding + retrieval
+   ↓
+top-k runbook chunks
+   ↓
+augmented prompt
+   ↓
+LLM answer
 ```
 
-The goal is to understand each layer rather than hiding the agent logic behind a framework.
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Incident] --> B[LLM]
+    B --> C{Tool calls?}
+    C -->|Yes| D[MCP tools]
+    D --> E[Logs / metrics / deployment]
+    E --> B
+    C -->|No| F[Final diagnosis]
+
+    G[Runbooks] --> H[RAG retrieval]
+    H --> B
+```
 
 ## Stack
 
@@ -59,28 +77,15 @@ The goal is to understand each layer rather than hiding the agent logic behind a
 - Qwen3-8B
 - vLLM
 - RunPod Serverless
-- Model Context Protocol (MCP)
-- AnyIO
-- native function calling
-- JSON Schema
-
-## Current status
-
-Implemented:
-
-- native tool calling
-- multi-step agent loop
-- multiple tool calls per model response
-- real service log files
-- MCP server
-- dynamic MCP tool discovery
-- automatic conversion of MCP schemas to Qwen tool definitions
-- MCP tool execution
-- separation between agent orchestration and tool implementations
+- MCP
+- SentenceTransformers
+- NumPy
+- requests
 
 ## Next steps
 
-- RAG over runbooks and incident documentation
-- systematic evaluation of tool selection and diagnosis quality
-- evaluation of observed evidence vs unsupported hypotheses
-- latency and token usage measurements
+- expose runbook retrieval as an MCP tool
+- let the agent decide when documentation should be retrieved
+- add multiple incident scenarios
+- evaluate retrieval, tool use and diagnosis quality
+- measure latency, token usage and retrieval settings
