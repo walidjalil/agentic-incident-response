@@ -8,6 +8,7 @@ Created on Thu Oct 22 01:10:56 2026
 
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
+import numpy as np
 
 
 def get_overlapped_chunks(textin, chunksize, overlapsize):
@@ -40,11 +41,18 @@ for doc in docs:
     all_chunks.extend(list_of_chunks)
 
 
-model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-query = "Which planet is known as the Red Planet?"
-documents = [
-    "Jupiter is the largest planet in our solar system.",
-    "Mars gets its reddish color from iron minerals in its soil.",
-    "Photosynthesis lets plants turn sunlight into energy.",
-]
+query = "What should I investigate when the database reaches its maximum connection limit?"
+
+# Embedd your query string and document strings. Each string outputs a d dimensional vector.
+chunk_texts = [chunk["text"] for chunk in all_chunks]
+document_embeddings = model.encode_document(chunk_texts)
+query_embedding = model.encode_query(query)
+
+for i in range(len(chunk_texts)):
+    cosine = np.dot(query_embedding, document_embeddings[i, :]) / (
+        np.linalg.norm(query_embedding)
+        * np.linalg.norm(document_embeddings[i, :])
+    )
+    print(f"Cosine Similarity for chunk {i + 1}:", cosine)
