@@ -10,6 +10,7 @@ from sentence_transformers import SentenceTransformer
 from pathlib import Path
 import numpy as np
 import agent
+import utils
 
 
 # ---------------- Retrieval Stage -------------------------------------------
@@ -115,4 +116,4 @@ messages = [
 ]
 
 answer = agent.ask_llm(messages)
-print(answer["content"])
+print(utils.remove_thinking(answer["content"]))
