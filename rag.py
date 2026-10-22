@@ -14,6 +14,8 @@ import utils
 
 RAG_DOCS_DIR = Path(__file__).parent / "rag_docs"
 
+model = None
+
 
 def get_overlapped_chunks(textin, chunksize, overlapsize):
     source = textin["source"]
@@ -31,6 +33,15 @@ def get_overlapped_chunks(textin, chunksize, overlapsize):
     return list_of_chunks
 
 
+def get_embedding_model():
+    global model
+
+    if model is None:
+        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+    return model
+
+
 def retrieve(query, top_k=3):
     docs = []
     for txt_file in RAG_DOCS_DIR.glob("*.md"):
@@ -45,7 +56,7 @@ def retrieve(query, top_k=3):
         list_of_chunks = get_overlapped_chunks(doc, 200, 50)
         all_chunks.extend(list_of_chunks)
 
-    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    model = get_embedding_model()
 
     # Embedd your query string and document strings. Each string outputs a d dimensional vector.
     chunk_texts = [chunk["text"] for chunk in all_chunks]

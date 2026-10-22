@@ -133,14 +133,14 @@ Use any available tools or documentation that would help.""",
 
                 tool_args_dict = json.loads(a["function"]["arguments"])
 
-                # print("\nQwen chose: ", tool_name)
-                # print("Arguments:", tool_args_dict)
+                print("\nQwen chose: ", tool_name)
+                print("Arguments:", tool_args_dict)
 
                 tool_result = anyio.run(
                     call_mcp_tool, tool_name, tool_args_dict
                 )
-                # print("\nTool result:\n")
-                # print(tool_result)
+                print("\nTool result:\n")
+                print(tool_result)
 
                 # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
                 new_message = {
