@@ -1,6 +1,6 @@
 # Agentic Incident Response
 
-A small project for learning how LLM agents, tool calling, MCP and RAG work under the hood.
+A project for learning how LLM agents, tool calling, MCP and RAG work under the hood.
 
 The project simulates a software incident where an API service becomes slow and starts returning errors. The agent can inspect metrics, deployment changes and service logs, retrieve relevant troubleshooting guidance, and use the collected evidence to diagnose the problem.
 
