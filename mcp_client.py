@@ -14,37 +14,35 @@ import anyio
 server_params = StdioServerParameters(command="python", args=["mcp_server.py"])
 
 
-async def get_tool_definitions():
+async def get_tool_definitions(client):
     # Discovery
-    async with Client(server_params) as client:
-        tool_definitions = []
+    tool_definitions = []
 
-        result = await client.list_tools()
+    result = await client.list_tools()
 
-        for tool in result.tools:
-            tool_definition = {
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.input_schema,
-                },
-            }
-            tool_definitions.append(tool_definition)
-        return tool_definitions
+    for tool in result.tools:
+        tool_definition = {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.input_schema,
+            },
+        }
+        tool_definitions.append(tool_definition)
+    return tool_definitions
 
 
-async def call_mcp_tool(tool_name, arguments):
+async def call_mcp_tool(client, tool_name, arguments):
     blocks = []
     # Execution
-    async with Client(server_params) as client:
-        result = await client.call_tool(tool_name, arguments)
-        for block in result.content:
-            if isinstance(block, TextContent):
-                blocks.append(block.text)
-        blocks_string = "\n".join(blocks)
+    result = await client.call_tool(tool_name, arguments)
+    for block in result.content:
+        if isinstance(block, TextContent):
+            blocks.append(block.text)
+    blocks_string = "\n".join(blocks)
 
-        return blocks_string
+    return blocks_string
 
 
 if __name__ == "__main__":

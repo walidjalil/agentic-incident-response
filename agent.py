@@ -6,7 +6,8 @@ Created on Fri Oct 16 20:43:46 2026
 @author: walidajalil
 """
 
-from mcp_client import get_tool_definitions, call_mcp_tool
+from mcp import Client
+from mcp_client import server_params, get_tool_definitions, call_mcp_tool
 import anyio
 import os
 import requests
@@ -75,83 +76,88 @@ def ask_llm(messages, tool_definitions=None):
         time.sleep(10)
 
 
-if __name__ == "__main__":
-    tool_definitions = anyio.run(get_tool_definitions)
+async def main():
+    async with Client(server_params) as client:
+        tool_definitions = await get_tool_definitions(client)
 
-    # messages = [
-    #     {
-    #         "role": "system",
-    #         "content": "Use the available tools when needed.",
-    #     },
-    #     {
-    #         "role": "user",
-    #         "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
-    #     },
-    # ]
+        # messages = [
+        #     {
+        #         "role": "system",
+        #         "content": "Use the available tools when needed.",
+        #     },
+        #     {
+        #         "role": "user",
+        #         "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
+        #     },
+        # ]
 
-    messages = [
-        {
-            "role": "system",
-            "content": "Use the available tools when needed.",
-        },
-        {
-            "role": "user",
-            "content": """The API has become significantly slower and is returning intermittent 5xx errors.
-Investigate the incident, determine the most likely root cause, and explain what evidence supports your conclusion.
-Use any available tools or documentation that would help.""",
-        },
-    ]
+        messages = [
+            {
+                "role": "system",
+                "content": "Use the available tools when needed.",
+            },
+            {
+                "role": "user",
+                "content": """The API has become significantly slower and is returning intermittent 5xx errors.
+    Investigate the incident, determine the most likely root cause, and explain what evidence supports your conclusion.
+    Use any available tools or documentation that would help.""",
+            },
+        ]
 
-    max_agentic_iterations = 5
-    agentic_iterations = 0
+        max_agentic_iterations = 5
+        agentic_iterations = 0
 
-    while True:
-        # Stop safely if the agent reaches the iteration limit.
-        if agentic_iterations >= max_agentic_iterations:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
-                }
-            )
-
-            final_answer = ask_llm(messages, [])
-
-            print("\nAgent stopped: maximum agent iterations reached.")
-            print("Final answer:")
-            print(utils.remove_thinking(final_answer["content"]))
-            break
-
-        agentic_iterations += 1
-
-        answer = ask_llm(messages, tool_definitions)
-        messages.append(answer)
-
-        if answer.get("tool_calls"):
-            for a in answer["tool_calls"]:
-                tool_name = a["function"]["name"]
-
-                tool_args_dict = json.loads(a["function"]["arguments"])
-
-                print("\nQwen chose: ", tool_name)
-                print("Arguments:", tool_args_dict)
-
-                tool_result = anyio.run(
-                    call_mcp_tool, tool_name, tool_args_dict
+        while True:
+            # Stop safely if the agent reaches the iteration limit.
+            if agentic_iterations >= max_agentic_iterations:
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
+                    }
                 )
-                print("\nTool result:\n")
-                print(tool_result)
 
-                # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
-                new_message = {
-                    "role": "tool",
-                    "tool_call_id": a["id"],
-                    "content": tool_result,
-                }
-                messages.append(new_message)
+                final_answer = ask_llm(messages, [])
 
-        # If no tool call is returned, treat the response as final.
-        else:
-            print("\n")
-            print(utils.remove_thinking(answer["content"]))
-            break
+                print("\nAgent stopped: maximum agent iterations reached.")
+                print("Final answer:")
+                print(utils.remove_thinking(final_answer["content"]))
+                break
+
+            agentic_iterations += 1
+
+            answer = ask_llm(messages, tool_definitions)
+            messages.append(answer)
+
+            if answer.get("tool_calls"):
+                for a in answer["tool_calls"]:
+                    tool_name = a["function"]["name"]
+
+                    tool_args_dict = json.loads(a["function"]["arguments"])
+
+                    print("\nQwen chose: ", tool_name)
+                    print("Arguments:", tool_args_dict)
+
+                    tool_result = await anyio.run(
+                        client, tool_name, tool_args_dict
+                    )
+                    print("\nTool result:\n")
+                    print(tool_result)
+
+                    # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
+                    new_message = {
+                        "role": "tool",
+                        "tool_call_id": a["id"],
+                        "content": tool_result,
+                    }
+                    messages.append(new_message)
+
+            # If no tool call is returned, treat the response as final.
+            else:
+                print("\n")
+                print(utils.remove_thinking(answer["content"]))
+                break
+
+
+if __name__ == "__main__":
+    anyio.run(main)

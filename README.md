@@ -20,9 +20,9 @@ tool results are added to the conversation
 LLM continues investigating or gives a final diagnosis
 ```
 
-The agent uses native tool calling and can request multiple tools in the same response. Tool definitions are discovered through MCP and exposed to the model using JSON Schema.
+The agent uses native tool calling and can request multiple tools in the same response. Tool definitions are discovered dynamically through MCP and exposed to the model using JSON Schema.
 
-A maximum iteration limit prevents the agent from looping indefinitely.
+A persistent MCP session is kept open during the agent run so tool calls reuse the same server process. A maximum iteration limit prevents the agent from looping indefinitely.
 
 ## Current tools
 
@@ -38,37 +38,43 @@ Returns information about the latest deployment and configuration changes.
 
 Reads log data for a selected service and returns the most recent log entries.
 
-## RAG
+`search_runbooks(query, top_k=3)`
 
-A classic RAG pipeline is implemented over local incident-response runbooks.
+Searches incident-response runbooks and returns the most relevant chunks for the agent.
 
-Documents are split into overlapping chunks, embedded with SentenceTransformers, ranked against the query using cosine similarity, and the top-k chunks are added to the LLM context before generation.
+## Agentic RAG
+
+Runbook retrieval is exposed through MCP as a tool. The agent decides when documentation is useful instead of always retrieving before generation.
+
+Documents are split into overlapping chunks, embedded with SentenceTransformers, ranked against the query using cosine similarity, and returned as top-k results. The embedding model is loaded lazily only when retrieval is first needed.
 
 ```text
-query
+incident
+   ↓
+agent investigates
+   ↓
+search_runbooks when useful
    ↓
 embedding + retrieval
    ↓
 top-k runbook chunks
    ↓
-augmented prompt
-   ↓
-LLM answer
+agent continues investigation
 ```
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Incident] --> B[LLM]
+    A[Incident] --> B[LLM agent]
     B --> C{Tool calls?}
-    C -->|Yes| D[MCP tools]
-    D --> E[Logs / metrics / deployment]
+    C -->|Yes| D[MCP server]
+    D --> E[Metrics / deployment / logs]
+    D --> H[Runbook retrieval]
     E --> B
-    C -->|No| F[Final diagnosis]
-
-    G[Runbooks] --> H[RAG retrieval]
     H --> B
+    C -->|No| F[Final diagnosis]
+    G[Runbooks] --> H
 ```
 
 ## Stack
@@ -84,8 +90,8 @@ flowchart TD
 
 ## Next steps
 
-- expose runbook retrieval as an MCP tool
-- let the agent decide when documentation should be retrieved
+- cache document chunks and embeddings
 - add multiple incident scenarios
 - evaluate retrieval, tool use and diagnosis quality
+- test whether the agent distinguishes evidence from hypotheses
 - measure latency, token usage and retrieval settings
