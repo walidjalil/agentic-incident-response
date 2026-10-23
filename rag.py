@@ -16,6 +16,9 @@ RAG_DOCS_DIR = Path(__file__).parent / "rag_docs"
 
 model = None
 
+all_chunks_cache = None
+document_embeddings_cache = None
+
 
 def get_overlapped_chunks(textin, chunksize, overlapsize):
     source = textin["source"]
@@ -42,39 +45,54 @@ def get_embedding_model():
     return model
 
 
-def retrieve(query, top_k=3):
+def build_rag_index():
+    global all_chunks_cache
+    global document_embeddings_cache
+
+    if all_chunks_cache is not None and document_embeddings_cache is not None:
+        return
+
     docs = []
     for txt_file in RAG_DOCS_DIR.glob("*.md"):
-        print(txt_file)
         with open(txt_file) as f:
-            lines = f.read()
-            # Save file name and file text in dicts.
-            docs.append({"source": txt_file.name, "text": lines})
+            docs.append(
+                {
+                    "source": txt_file.name,
+                    "text": f.read(),
+                }
+            )
 
     all_chunks = []
     for doc in docs:
-        list_of_chunks = get_overlapped_chunks(doc, 200, 50)
-        all_chunks.extend(list_of_chunks)
+        all_chunks.extend(get_overlapped_chunks(doc, 200, 50))
 
     model = get_embedding_model()
 
-    # Embedd your query string and document strings. Each string outputs a d dimensional vector.
     chunk_texts = [chunk["text"] for chunk in all_chunks]
     document_embeddings = model.encode_document(chunk_texts)
+
+    all_chunks_cache = all_chunks
+    document_embeddings_cache = document_embeddings
+
+
+def retrieve(query, top_k=3):
+    build_rag_index()
+
+    model = get_embedding_model()
     query_embedding = model.encode_query(query)
 
     results = []
-    for i in range(len(chunk_texts)):
-        cosine = np.dot(query_embedding, document_embeddings[i, :]) / (
+    for i in range(len(all_chunks_cache)):
+        cosine = np.dot(query_embedding, document_embeddings_cache[i, :]) / (
             np.linalg.norm(query_embedding)
-            * np.linalg.norm(document_embeddings[i, :])
+            * np.linalg.norm(document_embeddings_cache[i, :])
         )
 
         results.append(
             {
                 "chunk_id": i,
-                "source": all_chunks[i]["source"],
-                "text": all_chunks[i]["text"],
+                "source": all_chunks_cache[i]["source"],
+                "text": all_chunks_cache[i]["text"],
                 "score": float(cosine),
             }
         )
