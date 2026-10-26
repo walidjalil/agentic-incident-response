@@ -8,6 +8,8 @@ Created on Tue Oct 20 02:30:43 2026
 
 import pathlib
 
+HADOOP_DIR = pathlib.Path(__file__).parent / "datasets/loghub/hadoop"
+
 
 # What is happening right now?
 def get_metrics():
@@ -48,3 +50,30 @@ def get_logs(service, limit):
     log = "".join(log)
 
     return log
+
+
+def search_logs(query: str = None, limit: int = 20):
+    docs = []
+    for txt_file in HADOOP_DIR.glob("*.log"):
+        with open(txt_file) as f:
+            docs.append(
+                {
+                    "source": txt_file.name,
+                    "text": f.readlines(),
+                }
+            )
+    matches = []
+    for doc in docs:
+        for row_nr, row in enumerate(doc["text"], start=1):
+            if query is None or query.lower() in row.lower():
+                # list_of_matches.append(row)
+                matches.append(
+                    {
+                        "source": doc["source"],
+                        "line": row_nr,
+                        "text": row,
+                    }
+                )
+                if len(matches) >= limit:
+                    return matches
+    return matches

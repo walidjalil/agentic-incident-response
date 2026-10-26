@@ -25,7 +25,7 @@ def get_metrics() -> dict:
 
 @mcp.tool()
 def get_deployment() -> dict:
-    """Get information on current deployment and any changes to it."""
+    """Get information on hahahcurrent deployment and any changes to it."""
     return incident_tools.get_deployment()
 
 
@@ -39,6 +39,12 @@ def get_logs(service: Literal["api", "worker", "db"], limit: int) -> str:
 def search_runbooks(query: str, top_k: int = 3) -> list[dict]:
     """Search incident-response runbooks for relevant troubleshooting guidance."""
     return retrieve(query, top_k)
+
+
+@mcp.tool()
+def search_logs(query: str, limit: int = 20) -> list:
+    """Search search logs (usch as Hadoop) row by row for query."""
+    return incident_tools.search_logs(query, limit)
 
 
 if __name__ == "__main__":
