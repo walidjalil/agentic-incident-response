@@ -43,7 +43,7 @@ def search_runbooks(query: str, top_k: int = 3) -> list[dict]:
 
 @mcp.tool()
 def search_logs(query: str, limit: int = 20) -> list:
-    """Search search logs (usch as Hadoop) row by row for query."""
+    """Search search logs (such as Hadoop) row by row for query."""
     return incident_tools.search_logs(query, limit)
 
 
