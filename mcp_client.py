@@ -45,17 +45,30 @@ async def call_mcp_tool(client, tool_name, arguments):
     return blocks_string
 
 
+async def main():
+    async with Client(server_params) as client:
+        tool_definitions = await get_tool_definitions(client)
+        print(tool_definitions)
+
+        result = await call_mcp_tool(
+            client,
+            "search_logs",
+            {"query": "ERROR", "limit": 5},
+        )
+
+        print(result)
+
+
 if __name__ == "__main__":
-    tool_definitions = anyio.run(get_tool_definitions)
-    print(tool_definitions)
+    anyio.run(main)
 
-    result = anyio.run(
-        call_mcp_tool,
-        "search_runbooks",
-        {
-            "query": "What should I investigate when the database reaches its maximum connection limit?",
-            "top_k": 3,
-        },
-    )
+    # result = anyio.run(
+    #     call_mcp_tool,
+    #     "search_runbooks",
+    #     {
+    #         "query": "What should I investigate when the database reaches its maximum connection limit?",
+    #         "top_k": 3,
+    #     },
+    # )
 
-    print(result)
+    # print(result)

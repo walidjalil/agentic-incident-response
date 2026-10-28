@@ -74,6 +74,6 @@ def search_logs(query: str = None, limit: int = 20):
                         "text": row,
                     }
                 )
-                if len(matches) >= limit:
+                if limit is not None and len(matches) >= limit:
                     return matches
     return matches
