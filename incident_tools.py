@@ -8,7 +8,7 @@ Created on Tue Oct 20 02:30:43 2026
 
 import pathlib
 
-HADOOP_DIR = pathlib.Path(__file__).parent / "datasets/loghub/hadoop"
+HADOOP_DIR = pathlib.Path(__file__).parent / "datasets/loghub/hadoop/full"
 
 
 # What is happening right now?
@@ -53,12 +53,14 @@ def get_logs(service, limit):
 
 
 def search_logs(
+    application_id: str,
     query: str = None,
     limit: int = 20,
     start_line: int = 1,
 ):
+    application_dir = HADOOP_DIR / application_id
     docs = []
-    for txt_file in HADOOP_DIR.glob("*.log"):
+    for txt_file in application_dir.glob("*.log"):
         with open(txt_file) as f:
             docs.append(
                 {

@@ -87,7 +87,15 @@ async def main():
             },
             {
                 "role": "user",
-                "content": """A Hadoop MapReduce job is failing. Investigate the incident using the available tools, determine the most likely root cause, and explain what evidence supports your conclusion.""",
+                "content": """Investigate Hadoop application "application_1445062781478_0012" using the available tools. Be through.
+
+Classify the application as exactly one of:
+- Normal
+- Machine down
+- Network disconnection
+- Disk full
+
+Explain the evidence for your classification.""",
             },
         ]
 
@@ -104,7 +112,7 @@ async def main():
         #         },
         #     ]
 
-        max_agentic_iterations = 5
+        max_agentic_iterations = 10
         agentic_iterations = 0
 
         while True:

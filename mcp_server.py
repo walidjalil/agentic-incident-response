@@ -42,10 +42,12 @@ def search_runbooks(query: str, top_k: int = 3) -> list[dict]:
 
 
 @mcp.tool()
-def search_logs(query: str, limit: int = 20, start_line: int = 1) -> list:
+def search_logs(
+    application_id: str, query: str, limit: int = 20, start_line: int = 1
+) -> list:
     """Search Hadoop logs using one case-insensitive literal substring.
     Use separate tool calls for different search terms."""
-    return incident_tools.search_logs(query, limit, start_line)
+    return incident_tools.search_logs(application_id, query, limit, start_line)
 
 
 if __name__ == "__main__":
