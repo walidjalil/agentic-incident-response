@@ -80,17 +80,6 @@ async def main():
     async with Client(server_params) as client:
         tool_definitions = await get_tool_definitions(client)
 
-        # messages = [
-        #     {
-        #         "role": "system",
-        #         "content": "Use the available tools when needed.",
-        #     },
-        #     {
-        #         "role": "user",
-        #         "content": "The API service is slow and returning errors. Investigate the problem. If evidence points to another service, inspect that service's logs before declaring it a root cause.",
-        #     },
-        # ]
-
         messages = [
             {
                 "role": "system",
@@ -98,11 +87,22 @@ async def main():
             },
             {
                 "role": "user",
-                "content": """The API has become significantly slower and is returning intermittent 5xx errors.
-    Investigate the incident, determine the most likely root cause, and explain what evidence supports your conclusion.
-    Use any available tools or documentation that would help.""",
+                "content": """A Hadoop MapReduce job is failing. Investigate the incident using the available tools, determine the most likely root cause, and explain what evidence supports your conclusion.""",
             },
         ]
+
+        #     messages = [
+        #         {
+        #             "role": "system",
+        #             "content": "Use the available tools when needed.",
+        #         },
+        #         {
+        #             "role": "user",
+        #             "content": """The API has become significantly slower and is returning intermittent 5xx errors.
+        # Investigate the incident, determine the most likely root cause, and explain what evidence supports your conclusion.
+        # Use any available tools or documentation that would help.""",
+        #         },
+        #     ]
 
         max_agentic_iterations = 5
         agentic_iterations = 0
@@ -138,8 +138,10 @@ async def main():
                     print("\nQwen chose: ", tool_name)
                     print("Arguments:", tool_args_dict)
 
-                    tool_result = await anyio.run(
-                        client, tool_name, tool_args_dict
+                    tool_result = await call_mcp_tool(
+                        client,
+                        tool_name,
+                        tool_args_dict,
                     )
                     print("\nTool result:\n")
                     print(tool_result)

@@ -19,32 +19,33 @@ mcp = MCPServer("Incident Response")
 
 @mcp.tool()
 def get_metrics() -> dict:
-    """Get the current service metrics."""
+    """Get metrics for the synthetic API/worker/database incident environment. Not Hadoop."""
     return incident_tools.get_metrics()
 
 
 @mcp.tool()
 def get_deployment() -> dict:
-    """Get information on hahahcurrent deployment and any changes to it."""
+    """Get deployment changes for the synthetic API incident environment. Not Hadoop."""
     return incident_tools.get_deployment()
 
 
 @mcp.tool()
 def get_logs(service: Literal["api", "worker", "db"], limit: int) -> str:
-    """Extract information from relevant logs."""
+    """Read synthetic API, worker, or database service logs. Not Hadoop logs."""
     return incident_tools.get_logs(service, limit)
 
 
 @mcp.tool()
 def search_runbooks(query: str, top_k: int = 3) -> list[dict]:
-    """Search incident-response runbooks for relevant troubleshooting guidance."""
+    """Search runbooks for the synthetic API/worker/database incident environment."""
     return retrieve(query, top_k)
 
 
 @mcp.tool()
-def search_logs(query: str, limit: int = 20) -> list:
-    """Search search logs (such as Hadoop) row by row for query."""
-    return incident_tools.search_logs(query, limit)
+def search_logs(query: str, limit: int = 20, start_line: int = 1) -> list:
+    """Search Hadoop logs using one case-insensitive literal substring.
+    Use separate tool calls for different search terms."""
+    return incident_tools.search_logs(query, limit, start_line)
 
 
 if __name__ == "__main__":

@@ -52,7 +52,11 @@ def get_logs(service, limit):
     return log
 
 
-def search_logs(query: str = None, limit: int = 20):
+def search_logs(
+    query: str = None,
+    limit: int = 20,
+    start_line: int = 1,
+):
     docs = []
     for txt_file in HADOOP_DIR.glob("*.log"):
         with open(txt_file) as f:
@@ -65,6 +69,8 @@ def search_logs(query: str = None, limit: int = 20):
     matches = []
     for doc in docs:
         for row_nr, row in enumerate(doc["text"], start=1):
+            if row_nr < start_line:
+                continue
             if query is None or query.lower() in row.lower():
                 # list_of_matches.append(row)
                 matches.append(
@@ -76,4 +82,7 @@ def search_logs(query: str = None, limit: int = 20):
                 )
                 if limit is not None and len(matches) >= limit:
                     return matches
+    if not matches:
+        return [{"message": f"No matches found for query: {query}"}]
+
     return matches
