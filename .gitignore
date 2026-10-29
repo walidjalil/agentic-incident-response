@@ -20,3 +20,6 @@ runpod_api_key.rtf
 
 #playground file
 playground.py
+
+# Large datasets
+datasets/loghub/hadoop/full/
