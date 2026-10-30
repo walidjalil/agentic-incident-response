@@ -124,8 +124,8 @@ async def run_agent(prompt):
 
                     tool_args_dict = json.loads(a["function"]["arguments"])
 
-                    print("\nQwen chose: ", tool_name)
-                    print("Arguments:", tool_args_dict)
+                    # print("\nQwen chose: ", tool_name)
+                    # print("Arguments:", tool_args_dict)
 
                     tool_result = await call_mcp_tool(
                         client,
@@ -145,9 +145,9 @@ async def run_agent(prompt):
 
             # If no tool call is returned, treat the response as final.
             else:
-                print("\n")
+                # print("\n")
                 final_answer = utils.remove_thinking(answer["content"])
-                print(final_answer)
+                # print(final_answer)
                 return final_answer
 
 

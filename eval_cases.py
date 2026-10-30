@@ -6,17 +6,10 @@ Created on Thu Oct 29 10:33:01 2026
 @author: walidajalil
 """
 
-from incident_tools import search_logs
 import csv
-
+import json
 from agent import run_agent
 import anyio
-
-result = search_logs(
-    application_id="application_1445062781478_0011",
-    query=None,
-    limit=1000,
-)
 
 
 def load_labels():
@@ -33,15 +26,8 @@ def load_labels():
 
 results = load_labels()
 
-test_ids = [
-    "application_1445062781478_0011",
-    "application_1445062781478_0012",
-    "application_1445144423722_0020",
-    "application_1445182159119_0011",
-]
 
-
-async def evaluate_case(application_id=None, expected_label=None):
+async def evaluate_case(application_id, expected_label):
     prompt = [
         {
             "role": "system",
@@ -49,7 +35,7 @@ async def evaluate_case(application_id=None, expected_label=None):
         },
         {
             "role": "user",
-            "content": """Investigate Hadoop application "application_1445062781478_0012" using the available tools. Be thorough.
+            "content": f"""Investigate Hadoop application {application_id} using the available tools. Be thorough.
     
     Classify the application as exactly one of:
     - Normal
@@ -62,8 +48,32 @@ async def evaluate_case(application_id=None, expected_label=None):
 - "explanation": a short explanation of the evidence""",
         },
     ]
+    output = await run_agent(prompt)
+    output = json.loads(output)
 
-    return run_agent(prompt)
+    return {
+        "application_id": application_id,
+        "expected": expected_label,
+        "predicted": output["label"],
+        "correct": output["label"] == expected_label,
+        "explanation": output["explanation"],
+    }
 
 
-data = anyio.run(evaluate_case)
+async def main():
+    evaluations = []
+
+    for application_id, expected_label in results.items():
+        result = await evaluate_case(application_id, expected_label)
+        evaluations.append(result)
+
+    correct = sum(result["correct"] for result in evaluations)
+    total = len(evaluations)
+
+    print(f"\nCorrect: {correct}/{total}")
+    print(f"Accuracy: {correct / total:.1%}")
+
+    return evaluations
+
+
+evaluations = anyio.run(main)
