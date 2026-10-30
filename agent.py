@@ -76,28 +76,9 @@ def ask_llm(messages, tool_definitions=None):
         time.sleep(10)
 
 
-async def main():
+async def run_agent(prompt):
     async with Client(server_params) as client:
         tool_definitions = await get_tool_definitions(client)
-
-        messages = [
-            {
-                "role": "system",
-                "content": "Use the available tools when needed.",
-            },
-            {
-                "role": "user",
-                "content": """Investigate Hadoop application "application_1445062781478_0012" using the available tools. Be through.
-
-Classify the application as exactly one of:
-- Normal
-- Machine down
-- Network disconnection
-- Disk full
-
-Explain the evidence for your classification.""",
-            },
-        ]
 
         #     messages = [
         #         {
@@ -118,24 +99,24 @@ Explain the evidence for your classification.""",
         while True:
             # Stop safely if the agent reaches the iteration limit.
             if agentic_iterations >= max_agentic_iterations:
-                messages.append(
+                prompt.append(
                     {
                         "role": "user",
                         "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
                     }
                 )
 
-                final_answer = ask_llm(messages, [])
+                final_answer = ask_llm(prompt, [])
 
                 print("\nAgent stopped: maximum agent iterations reached.")
                 print("Final answer:")
                 print(utils.remove_thinking(final_answer["content"]))
-                break
+                return utils.remove_thinking(final_answer["content"])
 
             agentic_iterations += 1
 
-            answer = ask_llm(messages, tool_definitions)
-            messages.append(answer)
+            answer = ask_llm(prompt, tool_definitions)
+            prompt.append(answer)
 
             if answer.get("tool_calls"):
                 for a in answer["tool_calls"]:
@@ -160,14 +141,40 @@ Explain the evidence for your classification.""",
                         "tool_call_id": a["id"],
                         "content": tool_result,
                     }
-                    messages.append(new_message)
+                    prompt.append(new_message)
 
             # If no tool call is returned, treat the response as final.
             else:
                 print("\n")
-                print(utils.remove_thinking(answer["content"]))
-                break
+                final_answer = utils.remove_thinking(answer["content"])
+                print(final_answer)
+                return final_answer
+
+
+async def main():
+    prompt = [
+        {
+            "role": "system",
+            "content": "Use the available tools when needed.",
+        },
+        {
+            "role": "user",
+            "content": """Investigate Hadoop application "application_1445062781478_0012" using the available tools. Be thorough.
+    
+    Classify the application as exactly one of:
+    - Normal
+    - Machine down
+    - Network disconnection
+    - Disk full
+    
+    Return your final answer as valid JSON with exactly these fields:
+- "label": one of "Normal", "Machine down", "Network disconnection", "Disk full"
+- "explanation": a short explanation of the evidence""",
+        },
+    ]
+    result = await run_agent(prompt)
+    return result
 
 
 if __name__ == "__main__":
-    anyio.run(main)
+    final_answer = anyio.run(main)
