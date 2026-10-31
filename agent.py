@@ -132,8 +132,8 @@ async def run_agent(prompt):
                         tool_name,
                         tool_args_dict,
                     )
-                    print("\nTool result:\n")
-                    print(tool_result)
+                    # print("\nTool result:\n")
+                    # print(tool_result)
 
                     # Native tool calling can call on multiple functions in the same answer. Make sure you REMEMBER that!
                     new_message = {

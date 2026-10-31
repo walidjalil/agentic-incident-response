@@ -61,11 +61,19 @@ async def evaluate_case(application_id, expected_label):
 
 
 async def main():
+    step_counter = 1
     evaluations = []
 
     for application_id, expected_label in results.items():
+        print("Step: ", step_counter)
+
         result = await evaluate_case(application_id, expected_label)
         evaluations.append(result)
+
+        with open("eval_results.jsonl", "a") as f:
+            f.write(json.dumps(result) + "\n")
+
+        step_counter += 1
 
     correct = sum(result["correct"] for result in evaluations)
     total = len(evaluations)
