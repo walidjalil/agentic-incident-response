@@ -49,7 +49,19 @@ async def evaluate_case(application_id, expected_label):
         },
     ]
     output = await run_agent(prompt)
-    output = json.loads(output)
+    try:
+        output = json.loads(output)
+    # Code snippet to catch the error when the answer is too long and we cant remove thinking tokens.
+    except json.JSONDecodeError:
+        print("Invalid JSON output:", repr(output))
+
+        return {
+            "application_id": application_id,
+            "expected": expected_label,
+            "predicted": None,
+            "correct": False,
+            "explanation": "Invalid JSON output",
+        }
 
     return {
         "application_id": application_id,
@@ -61,25 +73,27 @@ async def evaluate_case(application_id, expected_label):
 
 
 async def main():
-    step_counter = 1
-    evaluations = []
+    for run_counter in range(3, 6):
+        step_counter = 1
+        evaluations = []
 
-    for application_id, expected_label in results.items():
-        print("Step: ", step_counter)
+        for application_id, expected_label in results.items():
+            print("\nRun: ", run_counter)
+            print("Step: ", step_counter)
 
-        result = await evaluate_case(application_id, expected_label)
-        evaluations.append(result)
+            result = await evaluate_case(application_id, expected_label)
+            evaluations.append(result)
 
-        with open("eval_results.jsonl", "a") as f:
-            f.write(json.dumps(result) + "\n")
+            with open(f"eval_results_run{run_counter}.jsonl", "a") as f:
+                f.write(json.dumps(result) + "\n")
 
-        step_counter += 1
+            step_counter += 1
 
-    correct = sum(result["correct"] for result in evaluations)
-    total = len(evaluations)
+        correct = sum(result["correct"] for result in evaluations)
+        total = len(evaluations)
 
-    print(f"\nCorrect: {correct}/{total}")
-    print(f"Accuracy: {correct / total:.1%}")
+        print(f"\nCorrect: {correct}/{total}")
+        print(f"Accuracy: {correct / total:.1%}")
 
     return evaluations
 
