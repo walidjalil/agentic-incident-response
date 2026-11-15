@@ -1,30 +1,26 @@
 # Agentic Incident Response
 
-A project for learning how LLM agents, tool calling, MCP and RAG work under the hood.
+A small project for experimenting with LLM agents, tool calling, MCP and retrieval for incident investigation.
 
-The project started with a simulated software incident where an API service becomes slow and starts returning errors. The agent can inspect metrics, deployment changes and service logs, retrieve relevant troubleshooting guidance, and use the collected evidence to diagnose the problem.
-
-The project now also includes real Hadoop logs from LogHub so the same agent loop can be tested on less controlled data.
+The project started with a synthetic API incident and later added real Hadoop logs from LogHub. The agent can inspect logs, metrics, deployment information and runbooks through MCP tools and use that information to classify or diagnose incidents.
 
 ## How it works
-
-The agent investigation loop is:
 
 ```text
 incident
    ↓
 LLM decides which tools to call
    ↓
-MCP executes the selected tools
+MCP executes the tools
    ↓
-tool results are added to the conversation
+results are added to the conversation
    ↓
-LLM continues investigating or gives a final diagnosis
+LLM continues investigating or returns a final answer
 ```
 
-The agent uses native tool calling and can request multiple tools in the same response. Tool definitions are discovered dynamically through MCP and exposed to the model using JSON Schema.
+The agent uses native tool calling. Tool definitions are discovered through MCP and passed to the model using JSON Schema.
 
-A persistent MCP session is kept open during the agent run so tool calls reuse the same server process. A maximum iteration limit prevents the agent from looping indefinitely.
+A persistent MCP session is kept open during each agent run so the same server process can be reused across tool calls.
 
 ## Current tools
 
@@ -38,56 +34,69 @@ Returns information about the latest deployment and configuration changes.
 
 `get_logs(service, limit)`
 
-Reads simulated log data for a selected API, worker or database service.
+Reads simulated API, worker or database logs.
 
 `search_runbooks(query, top_k=3)`
 
-Searches incident-response runbooks and returns the most relevant chunks for the agent.
+Searches troubleshooting runbooks using embeddings and cosine similarity.
 
-`search_logs(query, limit=20, start_line=1)`
+`search_logs(application_id, query, limit=20, start_line=1)`
 
-Searches the LogHub Hadoop logs using a case-insensitive literal substring. Results include the source file, line number and matching log row. `start_line` lets the agent continue searching further down the file when the first batch is not enough.
+Searches logs for one Hadoop application using a case-insensitive literal substring. Results include source file, line number and matching log row.
 
-## Agentic RAG
+## RAG
 
-Runbook retrieval is exposed through MCP as a tool. The agent decides when documentation is useful instead of always retrieving before generation.
+Runbook retrieval is exposed as an MCP tool instead of being called automatically before every request.
 
-Documents are split into overlapping chunks, embedded with SentenceTransformers, ranked against the query using cosine similarity, and returned as top-k results. The embedding model is loaded lazily only when retrieval is first needed. Chunks and embeddings are cached in memory during the process.
+The current implementation:
 
 ```text
-incident
+runbooks
    ↓
-agent investigates
+chunking
    ↓
-search_runbooks when useful
+SentenceTransformer embeddings
    ↓
-embedding + retrieval
+cosine similarity
    ↓
-top-k runbook chunks
-   ↓
-agent continues investigation
+top-k chunks
 ```
+
+Chunks and embeddings are cached in memory after the first retrieval.
 
 ## Hadoop logs
 
-The project currently uses the LogHub `Hadoop_2k` sample for development.
+The project uses the labeled LogHub Hadoop dataset for evaluation.
 
-Instead of sending the entire log file to the model, the agent searches it through `search_logs`. This keeps the investigation tool-based and lets the model decide what evidence to look for.
+Each application belongs to one of four classes:
 
-In the current test case, the logs contain repeated HDFS and ResourceManager communication errors, followed by `NoRouteToHostException` errors during MapReduce task attempts. The agent can use these log entries to investigate the likely cause of the failure.
+- Normal
+- Machine down
+- Network disconnection
+- Disk full
 
-The Hadoop files are stored under:
+The agent does not receive the full application logs in its context. It searches them through `search_logs` and decides what to inspect.
 
-```text
-datasets/
-└── loghub/
-    └── hadoop/
-        ├── Hadoop_2k.log
-        ├── Hadoop_2k.log_structured.csv
-        └── Hadoop_2k.log_templates.csv
-```
+The smaller `Hadoop_2k` sample is still useful for development and debugging.
 
-The raw `.log` file is currently used by the agent. The structured files will be useful later for analysis and evaluation.
+## Evaluation
+
+The current baseline uses 55 labeled Hadoop applications and was repeated five times with the same model settings, prompt and tools.
+
+That gives 275 classifications in total.
+
+Aggregate accuracy: **31.3%**
+
+| Class | Recall |
+| --- | ---: |
+| Normal | 70.9% |
+| Machine down | 5.0% |
+| Network disconnection | 68.6% |
+| Disk full | 35.6% |
+
+The main issue in the baseline is that the agent tends to predict either `Normal` or `Network disconnection`. `Machine down` is rarely identified correctly.
+
+These results are the baseline for later changes to the search and retrieval setup.
 
 ## Architecture
 
@@ -102,7 +111,7 @@ flowchart TD
     E --> B
     H --> B
     I --> B
-    C -->|No| F[Final diagnosis]
+    C -->|No| F[Final answer]
     G[Runbooks] --> H
     J[LogHub Hadoop logs] --> I
 ```
@@ -121,9 +130,8 @@ flowchart TD
 
 ## Next steps
 
-- build an evaluation setup for tool use and diagnosis quality
-- test multiple runs on the same incident
-- evaluate whether the agent distinguishes evidence from hypotheses
-- move from the Hadoop 2k sample to the full labeled Hadoop dataset
-- add more real incident scenarios
-- measure latency, token usage and tool-call behavior
+- inspect the main Hadoop failure cases
+- compare different log retrieval strategies
+- test BM25, embeddings and reranking
+- measure latency and tool-call behavior
+- add more incident scenarios
