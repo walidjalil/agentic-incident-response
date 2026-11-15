@@ -81,11 +81,16 @@ The smaller `Hadoop_2k` sample is still useful for development and debugging.
 
 ## Evaluation
 
-The current baseline uses 55 labeled Hadoop applications and was repeated five times with the same model settings, prompt and tools.
+The benchmark uses 55 labeled Hadoop applications. Each setup is run five times with the same model settings and prompt.
 
-That gives 275 classifications in total.
+### v1 — Literal substring search
 
-Aggregate accuracy: **31.3%**
+`search_logs` currently searches for exact substrings in the raw log lines. This is a weak retrieval method for this task: useful evidence can be missed when the agent searches for a different word than the one used in the log.
+
+Evaluation:
+
+- 5 runs × 55 applications = 275 classifications
+- aggregate accuracy: **31.3%**
 
 | Class | Recall |
 | --- | ---: |
@@ -94,9 +99,25 @@ Aggregate accuracy: **31.3%**
 | Network disconnection | 68.6% |
 | Disk full | 35.6% |
 
-The main issue in the baseline is that the agent tends to predict either `Normal` or `Network disconnection`. `Machine down` is rarely identified correctly.
+The largest problem is `Machine down`, which is usually classified as either `Normal` or `Network disconnection`.
 
-These results are the baseline for later changes to the search and retrieval setup.
+### v2 — BM25
+
+Use BM25 to rank log lines or chunks instead of requiring an exact substring match.
+
+Evaluation: **not run yet**
+
+### v3 — Embedding search
+
+Use vector embeddings and cosine similarity to retrieve semantically related log lines or chunks.
+
+Evaluation: **not run yet**
+
+### v4 — Embedding search + reranker
+
+Use embedding search to retrieve candidates, then rerank them before returning the final results to the agent.
+
+Evaluation: **not run yet**
 
 ## Architecture
 
@@ -130,8 +151,8 @@ flowchart TD
 
 ## Next steps
 
-- inspect the main Hadoop failure cases
-- compare different log retrieval strategies
-- test BM25, embeddings and reranking
-- measure latency and tool-call behavior
-- add more incident scenarios
+- implement BM25 log retrieval
+- run the same evaluation with BM25
+- compare BM25 with embedding search
+- add a reranker and repeat the evaluation
+- compare accuracy, per-class metrics and latency across versions
