@@ -8,6 +8,7 @@ Created on Tue Oct 20 02:30:43 2026
 
 import pathlib
 import bm25s
+from functools import lru_cache
 
 HADOOP_DIR = pathlib.Path(__file__).parent / "datasets/loghub/hadoop/full"
 
@@ -109,14 +110,16 @@ def load_application_logs(application_id):
     return docs
 
 
-def search_logs_bm25_v1(
-    application_id: str,
-    query: str,
-    limit: int = 20,
-):
+# Cache the documents and BM25 index for each application_id...
+# If the same application_id is used again, return the cached
+# result instead of reading the logs and rebuilding the index.
+# maxsize=8 means we keep up to 8 application indexes in RAM.
+@lru_cache(maxsize=8)
+def get_bm25_index(application_id):
     docs = load_application_logs(application_id)
+
     if not docs:
-        return [{"message": f"No logs found for: {application_id}"}]
+        return docs, None
 
     corpus = [doc["text"] for doc in docs]
 
@@ -126,14 +129,32 @@ def search_logs_bm25_v1(
     # Create the BM25 model and index the corpus:
     retriever = bm25s.BM25()
     retriever.index(corpus_tokens)
-    ##### REMEMBER TO CACHE YOUR INDEX, OTHERWISE YOUR AGENT WILL REINDEX EVERY TIME IT IS CALLED. MFUCKER
+
+    # Return both documents and retriever because BM25 results
+    # refer to the original document positions.
+    return docs, retriever
+
+
+def search_logs_bm25_v1(
+    application_id: str,
+    query: str,
+    limit: int = 20,
+):
+    # Get documents and BM25 index from cache.
+    # First call builds the index; later calls reuse it.
+    docs, retriever = get_bm25_index(application_id)
+
+    if not docs:
+        return [{"message": f"No logs found for: {application_id}"}]
 
     # Query the corpus, bm25s package automatically converts the query to lowercase:
     query_tokens = bm25s.tokenize(query, stopwords=None, stemmer=None)
 
-    # We get back numpy arrys of size [n_queries, limit] ---> in the case of one query and default limit we get a 1x20 NumPy array.
+    # We get back numpy arrays of size [n_queries, limit] ---> in the case of one query and default limit we get a 1x20 NumPy array.
     results, scores = retriever.retrieve(query_tokens, k=min(limit, len(docs)))
 
+    # Match document indexes with their scores.
+    # Only return documents with a positive BM25 score.
     matches = []
     for doc_idx, score in zip(results[0], scores[0]):
         if score > 0:
@@ -149,3 +170,8 @@ if __name__ == "__main__":
     resulting_docs_list = search_logs_bm25_v1(
         "application_1445062781478_0011", "Killing"
     )
+
+    search_logs_bm25_v1("application_1445062781478_0011", "error")
+    search_logs_bm25_v1("application_1445062781478_0011", "container")
+
+    print(get_bm25_index.cache_info())

@@ -73,7 +73,7 @@ async def evaluate_case(application_id, expected_label):
 
 
 async def main():
-    for run_counter in range(3, 6):
+    for run_counter in range(1, 6):
         step_counter = 1
         evaluations = []
 
@@ -84,7 +84,9 @@ async def main():
             result = await evaluate_case(application_id, expected_label)
             evaluations.append(result)
 
-            with open(f"eval_results_run{run_counter}.jsonl", "a") as f:
+            with open(
+                f"eval_results_bm25_v1_run{run_counter}.jsonl", "a"
+            ) as f:
                 f.write(json.dumps(result) + "\n")
 
             step_counter += 1
