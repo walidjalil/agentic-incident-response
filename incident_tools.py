@@ -7,6 +7,7 @@ Created on Tue Oct 20 02:30:43 2026
 """
 
 import pathlib
+import bm25s
 
 HADOOP_DIR = pathlib.Path(__file__).parent / "datasets/loghub/hadoop/full"
 
@@ -88,3 +89,63 @@ def search_logs(
         return [{"message": f"No matches found for query: {query}"}]
 
     return matches
+
+
+def load_application_logs(application_id):
+    application_dir = HADOOP_DIR / application_id
+    docs = []
+
+    for txt_file in application_dir.glob("*.log"):
+        with open(txt_file) as f:
+            for line_nr, line_text in enumerate(f, start=1):
+                docs.append(
+                    {
+                        "source": txt_file.name,
+                        "line": line_nr,
+                        "text": line_text,
+                    }
+                )
+
+    return docs
+
+
+def search_logs_bm25_v1(
+    application_id: str,
+    query: str,
+    limit: int = 20,
+):
+    docs = load_application_logs(application_id)
+    if not docs:
+        return [{"message": f"No logs found for: {application_id}"}]
+
+    corpus = [doc["text"] for doc in docs]
+
+    # Tokenize the corpus and only keep the ids (faster and saves memory):
+    corpus_tokens = bm25s.tokenize(corpus, stopwords=None, stemmer=None)
+
+    # Create the BM25 model and index the corpus:
+    retriever = bm25s.BM25()
+    retriever.index(corpus_tokens)
+    ##### REMEMBER TO CACHE YOUR INDEX, OTHERWISE YOUR AGENT WILL REINDEX EVERY TIME IT IS CALLED. MFUCKER
+
+    # Query the corpus, bm25s package automatically converts the query to lowercase:
+    query_tokens = bm25s.tokenize(query, stopwords=None, stemmer=None)
+
+    # We get back numpy arrys of size [n_queries, limit] ---> in the case of one query and default limit we get a 1x20 NumPy array.
+    results, scores = retriever.retrieve(query_tokens, k=min(limit, len(docs)))
+
+    matches = []
+    for doc_idx, score in zip(results[0], scores[0]):
+        if score > 0:
+            matches.append(docs[doc_idx])
+
+    if not matches:
+        return [{"message": f"No matches found for query: {query}"}]
+
+    return matches
+
+
+if __name__ == "__main__":
+    resulting_docs_list = search_logs_bm25(
+        "application_1445062781478_0011", "Killing"
+    )
