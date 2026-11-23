@@ -41,6 +41,7 @@ def search_runbooks(query: str, top_k: int = 3) -> list[dict]:
     return retrieve(query, top_k)
 
 
+'''
 @mcp.tool()
 def search_logs(
     application_id: str, query: str, limit: int = 20, start_line: int = 1
@@ -48,6 +49,17 @@ def search_logs(
     """Search Hadoop logs using one case-insensitive literal substring.
     Use separate tool calls for different search terms."""
     return incident_tools.search_logs(application_id, query, limit, start_line)
+'''
+
+
+@mcp.tool()
+def search_logs_bm25_v1(
+    application_id: str, query: str, limit: int = 20
+) -> list:
+    """Search Hadoop logs using BM25 lexical ranking.
+    Ranks individual log lines by relevance to the query and returns
+    the top matches. Supports multiple search terms in one query."""
+    return incident_tools.search_logs_bm25_v1(application_id, query, limit)
 
 
 if __name__ == "__main__":
