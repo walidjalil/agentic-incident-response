@@ -146,6 +146,6 @@ def search_logs_bm25_v1(
 
 
 if __name__ == "__main__":
-    resulting_docs_list = search_logs_bm25(
+    resulting_docs_list = search_logs_bm25_v1(
         "application_1445062781478_0011", "Killing"
     )
