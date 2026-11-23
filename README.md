@@ -101,9 +101,16 @@ Evaluation:
 
 The largest problem is `Machine down`, which is usually classified as either `Normal` or `Network disconnection`.
 
-### v2 — BM25
+### v2.1 — BM25
 
-Use BM25 to rank log lines or chunks instead of requiring an exact substring match.
+Use BM25 function to rank log lines instead of requiring an exact substring match.
+Caching the indexed corpus will be done here BEFORE starting the evals.
+
+Evaluation: **not run yet**
+
+### v2.2 — BM25
+
+Use BM25 function to rank lines and return surrounding rows as well instead of requiring an exact substring match.
 
 Evaluation: **not run yet**
 
