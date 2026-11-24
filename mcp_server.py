@@ -69,7 +69,7 @@ def search_logs_bm25_v2(
     query: str,
     limit: int = 5,
     chunk_size: int = 50,
-    overlap: int = 5,
+    overlap: int = 10,
 ) -> list:
     """Search Hadoop logs using BM25 lexical ranking.
     Ranks chunks of rows from logs by relevance to the query and returns

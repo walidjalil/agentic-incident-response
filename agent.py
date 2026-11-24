@@ -85,6 +85,33 @@ def ask_llm(messages, tool_definitions=None):
         time.sleep(10)
 
 
+def prepare_context(prompt):
+    tool_indices = [i for i, msg in enumerate(prompt) if msg["role"] == "tool"]
+    # This function cuts context history. Otherwise tokens will accumulate and we reach max tokens.
+    # Keep the latest tool result in full.
+    old_indices = set(tool_indices[:-1])
+
+    messages = []
+
+    for i, msg in enumerate(prompt):
+        if i in old_indices and isinstance(msg.get("content"), str):
+            content = msg["content"]
+
+            if len(content) > 3000:
+                content = (
+                    content[:1500]
+                    + "\n\n[Older log output omitted]\n\n"
+                    + content[-1500:]
+                )
+
+            # Create a copy. Do not change the original.
+            messages.append({**msg, "content": content})
+        else:
+            messages.append(msg)
+
+    return messages
+
+
 async def run_agent(prompt):
     async with Client(server_params) as client:
         tool_definitions = await get_tool_definitions(client)
@@ -114,8 +141,20 @@ async def run_agent(prompt):
                         "content": "Maximum agent iterations reached. Give your best final answer using the information gathered so far.",
                     }
                 )
+                context = prepare_context(prompt)
 
-                final_answer = ask_llm(prompt, [])
+                print(
+                    "Original context:",
+                    sum(len(str(m)) for m in prompt),
+                    "characters",
+                )
+                print(
+                    "Prepared context:",
+                    sum(len(str(m)) for m in context),
+                    "characters",
+                )
+
+                final_answer = ask_llm(context, [])
 
                 print("\nAgent stopped: maximum agent iterations reached.")
                 print("Final answer:")
@@ -124,7 +163,20 @@ async def run_agent(prompt):
 
             agentic_iterations += 1
 
-            answer = ask_llm(prompt, tool_definitions)
+            context = prepare_context(prompt)
+
+            print(
+                "Original context:",
+                sum(len(str(m)) for m in prompt),
+                "characters",
+            )
+            print(
+                "Prepared context:",
+                sum(len(str(m)) for m in context),
+                "characters",
+            )
+
+            answer = ask_llm(context, tool_definitions)
             prompt.append(answer)
 
             if answer.get("tool_calls"):
