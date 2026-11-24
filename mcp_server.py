@@ -51,7 +51,7 @@ def search_logs(
     return incident_tools.search_logs(application_id, query, limit, start_line)
 '''
 
-
+'''
 @mcp.tool()
 def search_logs_bm25_v1(
     application_id: str, query: str, limit: int = 20
@@ -60,6 +60,21 @@ def search_logs_bm25_v1(
     Ranks individual log lines by relevance to the query and returns
     the top matches. Supports multiple search terms in one query."""
     return incident_tools.search_logs_bm25_v1(application_id, query, limit)
+'''
+
+
+@mcp.tool()
+def search_logs_bm25_v2(
+    application_id: str,
+    query: str,
+    limit: int = 20,
+    chunk_size: int = 50,
+    overlap: int = 5,
+) -> list:
+    """Search Hadoop logs using BM25 lexical ranking.
+    Ranks chunks of rows from logs by relevance to the query and returns
+    the top matches. Supports multiple search terms in one query."""
+    return incident_tools.search_logs_bm25_v2(application_id, query, limit)
 
 
 if __name__ == "__main__":

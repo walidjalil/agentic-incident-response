@@ -85,7 +85,7 @@ async def main():
             evaluations.append(result)
 
             with open(
-                f"eval_results_bm25_v1_run{run_counter}.jsonl", "a"
+                f"eval_results_bm25_v2_run{run_counter}.jsonl", "a"
             ) as f:
                 f.write(json.dumps(result) + "\n")
 

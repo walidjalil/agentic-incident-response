@@ -110,6 +110,40 @@ def load_application_logs(application_id):
     return docs
 
 
+def load_application_log_chunks(application_id, chunk_size=10, overlap=5):
+    application_dir = HADOOP_DIR / application_id
+    docs = []
+
+    step = chunk_size - overlap
+
+    # Make sure you donyt get negative or 0 chunksizes. Also makesure overlap is bigger than zero but smaller than chunk sizes.
+    if chunk_size <= 0 or not (0 <= overlap < chunk_size):
+        raise ValueError("Invalid chunk_size or overlap")
+
+    for txt_file in application_dir.glob("*.log"):
+        with open(txt_file) as f:
+            lines = f.readlines()
+
+        for i in range(0, len(lines), step):
+            chunk = lines[i : i + chunk_size]
+
+            docs.append(
+                {
+                    "source": txt_file.name,
+                    "start_line": i + 1,
+                    "end_line": min(
+                        i + chunk_size, len(lines)
+                    ),  # make sure end line is maximum len(lines)
+                    "text": "".join(chunk),
+                }
+            )
+
+            if i + chunk_size >= len(lines):
+                break
+
+    return docs
+
+
 # Cache the documents and BM25 index for each application_id...
 # If the same application_id is used again, return the cached
 # result instead of reading the logs and rebuilding the index.
@@ -117,6 +151,27 @@ def load_application_logs(application_id):
 @lru_cache(maxsize=8)
 def get_bm25_index(application_id):
     docs = load_application_logs(application_id)
+
+    if not docs:
+        return docs, None
+
+    corpus = [doc["text"] for doc in docs]
+
+    # Tokenize the corpus and only keep the ids (faster and saves memory):
+    corpus_tokens = bm25s.tokenize(corpus, stopwords=None, stemmer=None)
+
+    # Create the BM25 model and index the corpus:
+    retriever = bm25s.BM25()
+    retriever.index(corpus_tokens)
+
+    # Return both documents and retriever because BM25 results
+    # refer to the original document positions.
+    return docs, retriever
+
+
+@lru_cache(maxsize=8)
+def get_bm25_chunk_index_v2(application_id, chunk_size=10, overlap=5):
+    docs = load_application_log_chunks(application_id, chunk_size, overlap)
 
     if not docs:
         return docs, None
@@ -166,6 +221,41 @@ def search_logs_bm25_v1(
     return matches
 
 
+def search_logs_bm25_v2(
+    application_id: str,
+    query: str,
+    limit: int = 5,
+    chunk_size: int = 50,
+    overlap: int = 5,
+):
+    # Get documents and BM25 index from cache.
+    # First call builds the index; later calls reuse it.
+    docs, retriever = get_bm25_chunk_index_v2(
+        application_id, chunk_size, overlap
+    )
+
+    if not docs:
+        return [{"message": f"No logs found for: {application_id}"}]
+
+    # Query the corpus, bm25s package automatically converts the query to lowercase:
+    query_tokens = bm25s.tokenize(query, stopwords=None, stemmer=None)
+
+    # We get back numpy arrays of size [n_queries, limit] ---> in the case of one query and default limit we get a 1x20 NumPy array.
+    results, scores = retriever.retrieve(query_tokens, k=min(limit, len(docs)))
+
+    # Match document indexes with their scores.
+    # Only return documents with a positive BM25 score.
+    matches = []
+    for doc_idx, score in zip(results[0], scores[0]):
+        if score > 0:
+            matches.append(docs[doc_idx])
+
+    if not matches:
+        return [{"message": f"No matches found for query: {query}"}]
+
+    return matches
+
+
 if __name__ == "__main__":
     resulting_docs_list = search_logs_bm25_v1(
         "application_1445062781478_0011", "Killing"
@@ -175,3 +265,17 @@ if __name__ == "__main__":
     search_logs_bm25_v1("application_1445062781478_0011", "container")
 
     print(get_bm25_index.cache_info())
+
+    docs = load_application_log_chunks(
+        "application_1445062781478_0011", chunk_size=10, overlap=5
+    )
+
+    print(len(docs))
+    print(docs[0])
+    print(docs[1])
+
+    matches = search_logs_bm25_v2(
+        "application_1445062781478_0012", "lost node", limit=5
+    )
+
+    print(matches[0])
