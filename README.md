@@ -81,32 +81,24 @@ The smaller `Hadoop_2k` sample is still useful for development and debugging.
 
 ## Evaluation
 
-The benchmark uses 55 labeled Hadoop applications. Each setup is run five times with the same model settings and prompt.
+The benchmark uses 55 labeled Hadoop applications. Each setup is run five times with the same model settings and prompt (275 classifications per version).
 
 ### v1 — Literal substring search
 
-`search_logs` currently searches for exact substrings in the raw log lines. This is a weak retrieval method for this task: useful evidence can be missed when the agent searches for a different word than the one used in the log.
+### v2.1 — BM25 (one log line per document)
 
-Evaluation:
+| Metric | Literal search | BM25 v1 |
+| --- | ---: | ---: |
+| Accuracy | 31.3% | 30.2% |
+| Macro F1 | 0.346 | 0.333 |
+| Weighted F1 | 0.256 | 0.257 |
 
-- 5 runs × 55 applications = 275 classifications
-- aggregate accuracy: **31.3%**
-
-| Class | Recall |
-| --- | ---: |
-| Normal | 70.9% |
-| Machine down | 5.0% |
-| Network disconnection | 68.6% |
-| Disk full | 35.6% |
-
-The largest problem is `Machine down`, which is usually classified as either `Normal` or `Network disconnection`.
-
-### v2.1 — BM25
-
-Use BM25 function to rank log lines instead of requiring an exact substring match.
-Caching the indexed corpus will be done here BEFORE starting the evals.
-
-Evaluation: **not run yet**
+| Class | Literal Recall | BM25 Recall | Literal F1 | BM25 F1 |
+| --- | ---: | ---: | ---: | ---: |
+| Normal | 70.9% | 50.9% | 0.341 | 0.322 |
+| Machine down | 5.0% | 6.4% | 0.095 | 0.116 |
+| Network disconnection | 68.6% | 77.1% | 0.425 | 0.360 |
+| Disk full | 35.6% | 42.2% | 0.525 | 0.535 |
 
 ### v2.2 — BM25
 
