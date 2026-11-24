@@ -15,7 +15,7 @@ from collections import Counter
 def load_eval_results():
     runs = {}
 
-    for file_path in sorted(Path(".").glob("eval_results_run*.jsonl")):
+    for file_path in sorted(Path(".").glob("eval_results_bm25_v1_run*.jsonl")):
         results = []
 
         with open(file_path) as f:
