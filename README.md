@@ -147,6 +147,7 @@ flowchart TD
 - NumPy
 - requests
 - LogHub
+- BM25S
 
 ## Next steps
 
