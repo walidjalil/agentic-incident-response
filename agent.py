@@ -40,7 +40,7 @@ def ask_llm(messages, tool_definitions=None):
                 "model": "qwen/qwen3-8b",
                 "messages": messages,
                 "tools": tool_definitions,
-                "max_tokens": 16000,
+                "max_tokens": 6000,
                 "temperature": 0.2,
                 "chat_template_kwargs": {"enable_thinking": True},
             },
@@ -64,14 +64,23 @@ def ask_llm(messages, tool_definitions=None):
             headers=headers,
         )
 
+        # Stop if the HTTP request itself failed (e.g. 404).
+        status_response.raise_for_status()
+
         status_data = status_response.json()
+        status = status_data["status"]
 
-        print("\nCurrent status:", status_data["status"])
+        print("\nCurrent status:", status)
 
-        # Code block to Print the message if status is completed.
-        if status_data["status"] == "COMPLETED":
+        # Code block to return the message if status is completed.
+        if status == "COMPLETED":
             message = status_data["output"][0]["choices"][0]["message"]
             return message
+
+        # Stop polling if RunPod reports a failed job.
+        if status in ("FAILED", "CANCELLED", "TIMED_OUT"):
+            print("RunPod error:", status_data)
+            raise RuntimeError(f"RunPod job {status}")
 
         time.sleep(10)
 

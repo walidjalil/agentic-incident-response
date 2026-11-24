@@ -228,6 +228,7 @@ def search_logs_bm25_v2(
     chunk_size: int = 50,
     overlap: int = 5,
 ):
+    limit = min(limit, 5)
     # Get documents and BM25 index from cache.
     # First call builds the index; later calls reuse it.
     docs, retriever = get_bm25_chunk_index_v2(
