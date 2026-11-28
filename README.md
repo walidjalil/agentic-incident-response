@@ -2,7 +2,7 @@
 
 An LLM-based agent for investigating and diagnosing system incidents through iterative tool calling and retrieval. The agent uses MCP to access logs, service metrics, deployment information and troubleshooting runbooks, deciding which evidence to retrieve as the investigation progresses.
 
-The project covers two incident investigation scenarios: a simulated API failure and failure classification using real-world Hadoop logs from the LogHub dataset, comprising approximately 20 million tokens. The Hadoop experiments evaluate how different retrieval methods and context management strategies affect classification performance using Qwen3-8B.
+The project covers two incident investigation scenarios: a simulated API failure and failure classification on a real-world Hadoop log corpus from LogHub containing **approximately 20 million tokens**. Rather than processing the full logs, the agent selectively retrieves relevant evidence through iterative tool calls. The experiments evaluate the impact of retrieval methods and context management strategies on classification performance using Qwen3-8B.
 
 ## How it works
 
