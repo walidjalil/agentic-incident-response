@@ -1,23 +1,3 @@
-"""Token budget guard for Qwen3-8B tool conversations.
-
-Install: python -m pip install "transformers>=4.51,<6" "jinja2>=3.1"
-In agent.py:
-    from context_budget import fit_context, MAX_OUTPUT_TOKENS
-    # First line INSIDE ask_llm(), before constructing the HTTP payload:
-    messages = fit_context(messages, tool_definitions or [])
-    # In the payload use: "max_tokens": MAX_OUTPUT_TOKENS
-    # Replace the old prepare_context() body with: return prompt
-    # This leaves all selection to one budget guard, avoiding earlier head/tail cuts.
-
-No model weights are loaded. The tokenizer is cached after its first load.
-The local tokenizer/chat template should match the deployed model. The 28,000
-input target leaves 6,960 tokens beyond the 6,000 output reservation on the
-reported 40,960-token server. A custom server template may count differently.
-
-This is lossy context selection, not a diagnosis tool. It preferentially keeps
-query-term excerpts and boundary excerpts. Other evidence can be omitted;
-all shortened results carry an explicit warning. Original messages are untouched.
-"""
 from bisect import bisect_right
 from copy import deepcopy
 from functools import lru_cache
@@ -33,6 +13,7 @@ MIN_EXCERPT_BUDGET = 128
 @lru_cache(maxsize=1)
 def get_tokenizer():
     from transformers import AutoTokenizer
+
     return AutoTokenizer.from_pretrained("Qwen/Qwen3-8B", use_fast=True)
 
 
@@ -57,12 +38,16 @@ def _query_terms(messages):
                 args = json.loads(args) if isinstance(args, str) else args
             except (ValueError, TypeError):
                 args = {}
-            queries[call.get("id")] = str(args.get("query", "")) if isinstance(args, dict) else ""
+            queries[call.get("id")] = (
+                str(args.get("query", "")) if isinstance(args, dict) else ""
+            )
     return queries
 
 
 def _encode_result(text, query, tokenizer):
-    encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+    encoded = tokenizer(
+        text, add_special_tokens=False, return_offsets_mapping=True
+    )
     offsets = encoded["offset_mapping"]
     starts = [a for a, _ in offsets]
     anchors = []
@@ -77,7 +62,11 @@ def _encode_result(text, query, tokenizer):
 
 
 def _excerpt(record, budget):
-    text, offsets, anchors = record["text"], record["offsets"], record["anchors"]
+    text, offsets, anchors = (
+        record["text"],
+        record["offsets"],
+        record["anchors"],
+    )
     n = len(offsets)
     if n <= budget:
         return text
@@ -107,7 +96,14 @@ def _excerpt(record, budget):
     )
 
 
-def fit_context(messages, tools=None, *, tokenizer=None, max_input_tokens=MAX_INPUT_TOKENS, verbose=True):
+def fit_context(
+    messages,
+    tools=None,
+    *,
+    tokenizer=None,
+    max_input_tokens=MAX_INPUT_TOKENS,
+    verbose=True,
+):
     """Return a budgeted COPY; retain tool-call/result pairs and the initial prompt.
 
     First shorten older tool outputs, then current outputs. Only if all are
@@ -123,37 +119,65 @@ def fit_context(messages, tools=None, *, tokenizer=None, max_input_tokens=MAX_IN
     records, caps, changed = {}, {}, set()
     removed_rounds = 0
     for message in context:
-        if message.get("role") == "tool" and isinstance(message.get("content"), str):
+        if message.get("role") == "tool" and isinstance(
+            message.get("content"), str
+        ):
             key = id(message)
-            records[key] = _encode_result(message["content"], queries.get(message.get("tool_call_id"), ""), tokenizer)
+            records[key] = _encode_result(
+                message["content"],
+                queries.get(message.get("tool_call_id"), ""),
+                tokenizer,
+            )
             caps[key] = len(records[key]["offsets"])
     while True:
         size = count_input_tokens(context, tools, tokenizer)
         if size <= max_input_tokens:
             if verbose:
-                print(f"Budgeted input: {size}/{max_input_tokens} tokens; "
-                      f"shortened tool results: {len(changed)}; removed old rounds: {removed_rounds}")
+                print(
+                    f"Budgeted input: {size}/{max_input_tokens} tokens; "
+                    f"shortened tool results: {len(changed)}; removed old rounds: {removed_rounds}"
+                )
             return context
-        call_positions = [i for i, m in enumerate(context) if m.get("role") == "assistant" and m.get("tool_calls")]
+        call_positions = [
+            i
+            for i, m in enumerate(context)
+            if m.get("role") == "assistant" and m.get("tool_calls")
+        ]
         latest = call_positions[-1] if call_positions else -1
-        candidates = [(i, m) for i, m in enumerate(context) if id(m) in caps and caps[id(m)] > MIN_EXCERPT_BUDGET]
+        candidates = [
+            (i, m)
+            for i, m in enumerate(context)
+            if id(m) in caps and caps[id(m)] > MIN_EXCERPT_BUDGET
+        ]
         if candidates:
             older = [(i, m) for i, m in candidates if i < latest]
-            _, target = max(older or candidates, key=lambda pair: caps[id(pair[1])])
+            _, target = max(
+                older or candidates, key=lambda pair: caps[id(pair[1])]
+            )
             key = id(target)
             caps[key] = max(MIN_EXCERPT_BUDGET, caps[key] // 2)
-            target["content"] = records[key].get("prefix", "") + _excerpt(records[key], caps[key])
+            target["content"] = records[key].get("prefix", "") + _excerpt(
+                records[key], caps[key]
+            )
             changed.add(key)
             continue
         if len(call_positions) > 1:
             first = call_positions[0]
             call_ids = {c["id"] for c in context[first]["tool_calls"]}
-            context = [m for i, m in enumerate(context) if i != first and not (
-                m.get("role") == "tool" and m.get("tool_call_id") in call_ids
-            )]
+            context = [
+                m
+                for i, m in enumerate(context)
+                if i != first
+                and not (
+                    m.get("role") == "tool"
+                    and m.get("tool_call_id") in call_ids
+                )
+            ]
             removed_rounds += 1
-            note = ("[CONTEXT NOTE: An earlier tool-call round was omitted for size. "
-                    "Its observations are unavailable here, not evidence that failures were absent.]\n")
+            note = (
+                "[CONTEXT NOTE: An earlier tool-call round was omitted for size. "
+                "Its observations are unavailable here, not evidence that failures were absent.]\n"
+            )
             # Label the omission without changing roles or tool-call IDs.
             for m in context:
                 if m.get("role") == "tool":

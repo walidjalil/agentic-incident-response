@@ -17,7 +17,7 @@ def load_eval_results():
 
     for file_path in sorted(
         Path(".").glob(
-            "eval_results/eval_results_no_examples_debug_run{run_counter}.jsonl"
+            "eval_results/eval_results_fewshot_v2_clean_run_with_tools*.jsonl"
         )
     ):
         results = []
@@ -48,7 +48,7 @@ def accuracy_per_run(runs):
 
 accuracies = accuracy_per_run(runs)
 print(accuracies)
-
+print("----------------------------------")
 
 def calc_mean(accuracies):
     return np.array(list(accuracies.values())).mean()

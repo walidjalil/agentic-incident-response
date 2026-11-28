@@ -1,8 +1,8 @@
 # Agentic Incident Response
 
-A small project for experimenting with LLM agents, tool calling, MCP and retrieval for incident investigation.
+An LLM-based agent for investigating and diagnosing system incidents through iterative tool calling and retrieval. The agent uses MCP to access logs, service metrics, deployment information and troubleshooting runbooks, deciding which evidence to retrieve as the investigation progresses.
 
-The project started with a synthetic API incident and later added real Hadoop logs from LogHub. The agent can inspect logs, metrics, deployment information and runbooks through MCP tools and use that information to classify or diagnose incidents.
+The project covers two incident investigation scenarios: a simulated API failure and failure classification using real Hadoop logs from the LogHub dataset. The Hadoop experiments evaluate how different retrieval methods and context-management strategies affect classification performance using Qwen3-8B.
 
 ## How it works
 
