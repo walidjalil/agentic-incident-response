@@ -6,160 +6,67 @@ The project covers two incident investigation scenarios: a simulated API failure
 
 ## How it works
 
-```text
-incident
-   ↓
-LLM decides which tools to call
-   ↓
-MCP executes the tools
-   ↓
-results are added to the conversation
-   ↓
-LLM continues investigating or returns a final answer
-```
-
-The agent uses native tool calling. Tool definitions are discovered through MCP and passed to the model using JSON Schema.
-
-A persistent MCP session is kept open during each agent run so the same server process can be reused across tool calls.
+The agent uses native tool calling to investigate incidents iteratively. Tool definitions are discovered through MCP and passed to the model using JSON Schema. Tool results are added to the conversation until the model returns a final answer. A persistent MCP session reuses the same server process throughout each run.
 
 ## Current tools
 
 The Hadoop retrieval tool exposed through MCP depends on the evaluation version. The implementations are retained for comparison.
 
-`get_metrics()`
-
-Returns simulated service metrics such as latency, GPU utilization and queue length.
-
-`get_deployment()`
-
-Returns information about the latest deployment and configuration changes.
-
-`get_logs(service, limit)`
-
-Reads simulated API, worker or database logs.
-
-`search_runbooks(query, top_k=3)`
-
-Searches troubleshooting runbooks using embeddings and cosine similarity.
-
-`search_logs(application_id, query, limit=20, start_line=1)`
-
-Searches logs for one Hadoop application using a case-insensitive literal substring. Results include source file, line number and matching log row.
-
-`search_logs_bm25_v1(application_id, query, limit=20)`
-
-Ranks individual log lines using BM25. Each line is a separate retrieval document.
-
-`search_logs_bm25_v2(application_id, query, limit=5, chunk_size=50, overlap=10)`
-
-Ranks consecutive log-line chunks using BM25 and returns the top matching chunks with their source files and line ranges. Retrieval is capped at five chunks per call.
+- `get_metrics()` — simulated latency, GPU utilization and queue length.
+- `get_deployment()` — latest deployment and configuration changes.
+- `get_logs(service, limit)` — simulated API, worker or database logs.
+- `search_runbooks(query, top_k=3)` — embedding search over troubleshooting runbooks.
+- `search_logs(application_id, query, limit=20, start_line=1)` — literal substring search, with source file and line numbers.
+- `search_logs_bm25_v1(application_id, query, limit=20)` — BM25 over individual log lines.
+- `search_logs_bm25_v2(application_id, query, limit=5, chunk_size=50, overlap=10)` — BM25 over consecutive log chunks, returning up to five chunks with source files and line ranges.
 
 ## RAG
 
-Runbook retrieval is exposed as an MCP tool instead of being called automatically before every request.
-
-The current implementation:
-
-```text
-runbooks
-   ↓
-chunking
-   ↓
-SentenceTransformer embeddings
-   ↓
-cosine similarity
-   ↓
-top-k chunks
-```
-
-Chunks and embeddings are cached in memory after the first retrieval.
+Runbook retrieval is exposed as an MCP tool rather than invoked automatically. Runbooks are chunked and embedded using SentenceTransformers; cosine similarity ranks the top-k chunks. Chunks and embeddings are cached in memory after the first retrieval.
 
 ## Hadoop logs
 
-The project uses the labeled LogHub Hadoop dataset for evaluation.
-
-Each application belongs to one of four classes:
-
-- Normal
-- Machine down
-- Network disconnection
-- Disk full
-
-The agent does not receive the full application logs in its context. It searches them through an MCP log-retrieval tool and decides what to inspect.
-
-The smaller `Hadoop_2k` sample is still useful for development and debugging.
+The agent searches application logs through MCP rather than receiving the full logs in context. The labeled LogHub Hadoop dataset covers Normal, Machine down, Network disconnection and Disk full. The smaller `Hadoop_2k` sample is used for development and debugging.
 
 ## Evaluation
 
-The benchmark uses 55 labeled Hadoop applications (11 Normal, 28 Machine down, 7 Network disconnection and 9 Disk full). The first three retrieval setups are evaluated over five runs, for 275 classifications per version, using Qwen3-8B. Results for v2.3 currently cover one run of 55 applications.
+Qwen3-8B is evaluated on 55 labeled LogHub Hadoop applications (11 Normal, 28 Machine down, 7 Network disconnection, 9 Disk full). The first three versions use five runs each; v2.3 and v2.4 currently use one run each. Output-token budgets and context management changed during development, so differences cannot be attributed to retrieval alone.
 
-The experiments are not perfectly controlled: the output-token budget and context-management behavior changed during development. Differences in accuracy therefore cannot be attributed to retrieval alone.
+### Retrieval versions
 
-### v1 — Literal substring search
+- **v1:** Case-insensitive literal substring search.
+- **v2.1:** BM25 over individual log lines.
+- **v2.2:** BM25 over 50-line chunks with 10-line overlap, at most five chunks per search. Older tool responses are shortened in model context but retained locally; output limit: 6,000 tokens.
+- **v2.3:** v2.2 with few-shot prompting.
+- **v2.4:** v2.3 with revised context management.
+- **v3:** Embedding search with cosine similarity (planned).
+- **v4:** Embedding search + reranker (planned).
 
-Case-insensitive matching against individual log lines.
+### Overall results
 
-### v2.1 — BM25 (one log line per document)
+| Version | Runs | Accuracy | Macro F1 | Weighted F1 |
+| --- | ---: | ---: | ---: | ---: |
+| v1 | 5 | 31.3% | 0.346 | 0.256 |
+| v2.1 | 5 | 30.2% | 0.333 | 0.257 |
+| v2.2 | 5 | 28.7% | 0.329 | 0.216 |
+| v2.3 | 1 | 58.2% | 0.570 | 0.598 |
+| v2.4 | 1 | **69.1%** | **0.671** | **0.705** |
 
-BM25 ranks individual lines instead of relying on exact substring matches.
+Majority-class baseline: 50.9% accuracy (always predicting Machine down).
 
-### v2.2 — BM25 (multi-line chunks)
+### Per-class results
 
-BM25 ranks chunks of up to 50 consecutive log lines, with a 10-line overlap between chunks from the same file. The agent receives at most five chunks per search. Older tool responses are shortened when preparing the model context, while the original tool outputs remain available in the local conversation history. This version uses a 6,000-token output limit.
+Each cell shows **recall (%) / F1**. F1 is reported as zero for classes with no predictions.
 
-#### Results across five runs
+| Version | Normal | Machine down | Network disconnection | Disk full |
+| --- | ---: | ---: | ---: | ---: |
+| v1 | 70.9 / 0.341 | 5.0 / 0.095 | 68.6 / 0.425 | 35.6 / 0.525 |
+| v2.1 | 50.9 / 0.322 | 6.4 / 0.116 | 77.1 / 0.360 | 42.2 / 0.535 |
+| v2.2 | 52.7 / 0.343 | 0.0 / 0.000 | 77.1 / 0.316 | 51.1 / 0.657 |
+| v2.3 | 63.6 / 0.519 | 50.0 / 0.651 | 85.7 / 0.522 | 55.6 / 0.588 |
+| v2.4 | 63.6 / 0.609 | 64.3 / 0.766 | 85.7 / 0.571 | 77.8 / 0.737 |
 
-| Metric | Literal search | BM25 v2.1 | BM25 v2.2 |
-| --- | ---: | ---: | ---: |
-| Accuracy | 31.3% | 30.2% | 28.7% |
-| Macro F1 | 0.346 | 0.333 | 0.329 |
-| Weighted F1 | 0.256 | 0.257 | 0.216 |
-
-| Class | Literal recall | BM25 v2.1 recall | BM25 v2.2 recall | Literal F1 | BM25 v2.1 F1 | BM25 v2.2 F1 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Normal | 70.9% | 50.9% | 52.7% | 0.341 | 0.322 | 0.343 |
-| Machine down | 5.0% | 6.4% | 0.0% | 0.095 | 0.116 | 0.000 |
-| Network disconnection | 68.6% | 77.1% | 77.1% | 0.425 | 0.360 | 0.316 |
-| Disk full | 35.6% | 42.2% | 51.1% | 0.525 | 0.535 | 0.657 |
-
-BM25 v2.2 achieved **79/275 correct classifications**. Per-run accuracy was **25.5%, 30.9%, 29.1%, 29.1% and 29.1%**.
-
-The model never predicted **Machine down** in v2.2, despite that class accounting for 28 of the 55 applications. It often confused Machine down with Network disconnection or Normal. Disk full F1 improved, but overall accuracy declined relative to the previous retrieval setups. This suggests that retrieving longer passages alone does not resolve the underlying classification problem.
-
-As a simple reference point, always predicting the majority class (Machine down) would achieve **50.9% accuracy** on this dataset. Future evaluation should include simple rule-based baselines and closer error analysis. For classes with no predictions, F1 is reported as 0.
-
-### v2.3 — BM25 (multi-line chunks + few-shot prompting)
-
-Uses the multi-line BM25 retrieval approach from v2.2 with few-shot examples in the prompt.
-
-#### Results from one run
-
-| Metric | BM25 v2.3 |
-| --- | ---: |
-| Accuracy | 58.2% |
-| Macro F1 | 0.570 |
-| Weighted F1 | 0.598 |
-
-| Class | BM25 v2.3 recall | BM25 v2.3 F1 |
-| --- | ---: | ---: |
-| Normal | 63.6% | 0.519 |
-| Machine down | 50.0% | 0.651 |
-| Network disconnection | 85.7% | 0.522 |
-| Disk full | 55.6% | 0.588 |
-
-BM25 v2.3 achieved **32/55 correct classifications (58.2%)**. Machine down recall increased from 0% in v2.2 to 50.0% in this run, although 9 of the 28 Machine down applications were still classified as Network disconnection. The result exceeds the majority-class baseline, but further runs are needed for a comparable evaluation.
-
-### v3 — Embedding search
-
-Use vector embeddings and cosine similarity to retrieve semantically related log lines or chunks.
-
-Evaluation: **not run yet**
-
-### v4 — Embedding search + reranker
-
-Use embedding search to retrieve candidates, then rerank them before returning the final results to the agent.
-
-Evaluation: **not run yet**
+Multi-line retrieval alone (v2.2) improved Disk full F1 but reduced overall accuracy (79/275 correct). The model never predicted Machine down. With few-shot prompting (v2.3), accuracy rose to 32/55; revised context management (v2.4) reached 38/55. Machine down and Disk full recall improved, but seven Machine down cases were still classified as Network disconnection. More runs and controlled comparisons are needed to confirm these gains.
 
 ## Architecture
 
@@ -181,16 +88,7 @@ flowchart TD
 
 ## Stack
 
-- Python
-- Qwen3-8B
-- vLLM
-- RunPod Serverless
-- MCP
-- SentenceTransformers
-- NumPy
-- requests
-- LogHub
-- BM25S
+Python · Qwen3-8B · vLLM · RunPod Serverless · MCP · SentenceTransformers · NumPy · requests · LogHub · BM25S
 
 ## Next steps
 
