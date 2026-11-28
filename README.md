@@ -91,7 +91,7 @@ The smaller `Hadoop_2k` sample is still useful for development and debugging.
 
 ## Evaluation
 
-The benchmark uses 55 labeled Hadoop applications (11 Normal, 28 Machine down, 7 Network disconnection and 9 Disk full). Each retrieval setup is evaluated over five runs, for 275 classifications per version, using Qwen3-8B.
+The benchmark uses 55 labeled Hadoop applications (11 Normal, 28 Machine down, 7 Network disconnection and 9 Disk full). The first three retrieval setups are evaluated over five runs, for 275 classifications per version, using Qwen3-8B. Results for v2.3 currently cover one run of 55 applications.
 
 The experiments are not perfectly controlled: the output-token budget and context-management behavior changed during development. Differences in accuracy therefore cannot be attributed to retrieval alone.
 
@@ -127,6 +127,27 @@ BM25 v2.2 achieved **79/275 correct classifications**. Per-run accuracy was **25
 The model never predicted **Machine down** in v2.2, despite that class accounting for 28 of the 55 applications. It often confused Machine down with Network disconnection or Normal. Disk full F1 improved, but overall accuracy declined relative to the previous retrieval setups. This suggests that retrieving longer passages alone does not resolve the underlying classification problem.
 
 As a simple reference point, always predicting the majority class (Machine down) would achieve **50.9% accuracy** on this dataset. Future evaluation should include simple rule-based baselines and closer error analysis. For classes with no predictions, F1 is reported as 0.
+
+### v2.3 — BM25 (multi-line chunks + few-shot prompting)
+
+Uses the multi-line BM25 retrieval approach from v2.2 with few-shot examples in the prompt.
+
+#### Results from one run
+
+| Metric | BM25 v2.3 |
+| --- | ---: |
+| Accuracy | 58.2% |
+| Macro F1 | 0.570 |
+| Weighted F1 | 0.598 |
+
+| Class | BM25 v2.3 recall | BM25 v2.3 F1 |
+| --- | ---: | ---: |
+| Normal | 63.6% | 0.519 |
+| Machine down | 50.0% | 0.651 |
+| Network disconnection | 85.7% | 0.522 |
+| Disk full | 55.6% | 0.588 |
+
+BM25 v2.3 achieved **32/55 correct classifications (58.2%)**. Machine down recall increased from 0% in v2.2 to 50.0% in this run, although 9 of the 28 Machine down applications were still classified as Network disconnection. The result exceeds the majority-class baseline, but further runs are needed for a comparable evaluation.
 
 ### v3 — Embedding search
 
