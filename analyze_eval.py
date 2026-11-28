@@ -15,14 +15,18 @@ from collections import Counter
 def load_eval_results():
     runs = {}
 
-    for file_path in sorted(Path(".").glob("eval_results_bm25_v2_run*.jsonl")):
+    for file_path in sorted(
+        Path(".").glob(
+            "eval_results/eval_results_no_examples_debug_run{run_counter}.jsonl"
+        )
+    ):
         results = []
 
         with open(file_path) as f:
             for line in f:
                 results.append(json.loads(line))
 
-        runs[file_path.stem] = results
+        runs[file_path.stem] = results[-55:]
 
     return runs
 

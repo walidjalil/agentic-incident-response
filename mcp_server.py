@@ -67,7 +67,7 @@ def search_logs_bm25_v1(
 def search_logs_bm25_v2(
     application_id: str,
     query: str,
-    limit: int = 5,
+    limit: int = 2,
     chunk_size: int = 50,
     overlap: int = 10,
 ) -> list:

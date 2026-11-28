@@ -14,6 +14,7 @@ import requests
 import time
 import json
 import utils
+from context_budget import fit_context, MAX_OUTPUT_TOKENS
 
 
 api_key = os.getenv("RUNPOD_API_KEY")
@@ -32,6 +33,7 @@ headers = {
 
 
 def ask_llm(messages, tool_definitions=None):
+    messages = fit_context(messages, tool_definitions or [])
     data = {
         "input": {
             "route": "/v1/chat/completions",
@@ -40,7 +42,7 @@ def ask_llm(messages, tool_definitions=None):
                 "model": "qwen/qwen3-8b",
                 "messages": messages,
                 "tools": tool_definitions,
-                "max_tokens": 6000,
+                "max_tokens": MAX_OUTPUT_TOKENS,
                 "temperature": 0.2,
                 "chat_template_kwargs": {"enable_thinking": True},
             },
@@ -86,30 +88,7 @@ def ask_llm(messages, tool_definitions=None):
 
 
 def prepare_context(prompt):
-    tool_indices = [i for i, msg in enumerate(prompt) if msg["role"] == "tool"]
-    # This function cuts context history. Otherwise tokens will accumulate and we reach max tokens.
-    # Keep the latest tool result in full.
-    old_indices = set(tool_indices[:-1])
-
-    messages = []
-
-    for i, msg in enumerate(prompt):
-        if i in old_indices and isinstance(msg.get("content"), str):
-            content = msg["content"]
-
-            if len(content) > 3000:
-                content = (
-                    content[:1500]
-                    + "\n\n[Older log output omitted]\n\n"
-                    + content[-1500:]
-                )
-
-            # Create a copy. Do not change the original.
-            messages.append({**msg, "content": content})
-        else:
-            messages.append(msg)
-
-    return messages
+    return prompt
 
 
 async def run_agent(prompt):
@@ -143,6 +122,15 @@ async def run_agent(prompt):
                 )
                 context = prepare_context(prompt)
 
+                for msg in context:
+                    if msg["role"] == "tool":
+                        print(
+                            "Tool result length:",
+                            len(msg["content"]),
+                            "Contains lost:",
+                            "lost" in msg["content"].lower(),
+                        )
+
                 print(
                     "Original context:",
                     sum(len(str(m)) for m in prompt),
@@ -164,6 +152,15 @@ async def run_agent(prompt):
             agentic_iterations += 1
 
             context = prepare_context(prompt)
+
+            for msg in context:
+                if msg["role"] == "tool":
+                    print(
+                        "Tool result length:",
+                        len(msg["content"]),
+                        "Contains lost:",
+                        "lost" in msg["content"].lower(),
+                    )
 
             print(
                 "Original context:",
@@ -206,9 +203,9 @@ async def run_agent(prompt):
 
             # If no tool call is returned, treat the response as final.
             else:
-                # print("\n")
+                print("\n")
                 final_answer = utils.remove_thinking(answer["content"])
-                # print(final_answer)
+                print(final_answer)
                 return final_answer
 
 
@@ -220,19 +217,74 @@ async def main():
         },
         {
             "role": "user",
-            "content": """Investigate Hadoop application "application_1445062781478_0012" using the available tools. Be thorough.
-    
-    Classify the application as exactly one of:
-    - Normal
-    - Machine down
-    - Network disconnection
-    - Disk full
-    
-    Return your final answer as valid JSON with exactly these fields:
-- "label": one of "Normal", "Machine down", "Network disconnection", "Disk full"
-- "explanation": a short explanation of the evidence""",
+            "content": """Investigate Hadoop application "application_1445144423722_0022"
+using the available tools.
+
+Classify the application as exactly one of:
+- Normal
+- Machine down
+- Network disconnection
+- Disk full
+
+Search instructions:
+- BM25 uses lexical matching, so use short, focused queries.
+- Perform at least two separate searches targeting different failure indicators.
+- Search separately for node availability, container failures, network connectivity, and storage problems.
+- Include at least one query targeting node availability, using terms such as "node" or "lost".
+- Do not combine all failure categories into one BM25 query.
+- Relevant evidence may appear in INFO logs, not only WARN or ERROR.
+
+Diagnostic guidance:
+- Distinguish observed symptoms from the most likely underlying cause.
+- Connection errors can occur when a machine becomes unavailable.
+- A lost-node message establishes that Hadoop considers a node unavailable; it does not establish why.
+- Continued local logging supports process activity, but does not by itself establish Network disconnection.
+- Consider affected hosts, affected services, event order, and recovery together.
+- A job can succeed despite an injected failure.
+
+The following examples illustrate how to weigh evidence.
+They do not describe the application you are investigating.
+Do not treat their patterns as definitive rules.
+
+Example 1
+
+Evidence:
+Four task logs on the same worker stop during ordinary processing.
+Both its NodeManager and DataNode endpoints become unavailable.
+Other workers continue, and the job succeeds.
+Later, Hadoop reports the worker as unusable and releases its containers.
+
+Answer:
+{
+  "label": "Machine down",
+  "explanation": "The combined evidence supports host-wide unavailability: colocated tasks stop logging and multiple services on the same worker become inaccessible. Connection errors are symptoms of that unavailability. A network partition cannot be ruled out from these logs alone."
+}
+
+Example 2
+
+Evidence:
+The affected ApplicationMaster continues logging locally for over
+23 minutes while failing to reach RM and HDFS.
+Tasks on other hosts also lose communication with that AM.
+The first application attempt enters ERROR; a later attempt succeeds.
+
+Answer:
+{
+  "label": "Network disconnection",
+  "explanation": "Continued local activity together with failures across several incoming and outgoing communication paths supports network isolation. The precise physical cause remains uncertain."
+}
+
+Now investigate application "application_1445144423722_0022".
+
+Base your final explanation only on evidence retrieved for this
+application, not on observations from the examples.
+
+Return valid JSON with exactly these fields:
+- "label": one of the four allowed labels
+- "explanation": a short explanation of the supporting evidence and any important uncertainty""",
         },
     ]
+
     result = await run_agent(prompt)
     return result
 
