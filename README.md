@@ -194,9 +194,6 @@ flowchart TD
 
 ## Next steps
 
-- inspect Machine down failure cases and distinguish network symptoms from root causes
-- evaluate a simple rule-based baseline alongside the LLM agent
-- test few-shot prompting with examples that do not overlap with evaluated applications
 - compare BM25 with embedding search and hybrid retrieval
 - add a reranker and repeat the evaluation
 - evaluate context-management trade-offs, accuracy, per-class metrics and latency across versions
